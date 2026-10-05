@@ -51,9 +51,9 @@
   color-scheme: dark;
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; touch-action: manipulation; }
 [hidden] { display: none !important; }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
   background: var(--surface-0);
   color: var(--text-primary);
@@ -203,7 +203,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   touch-action: manipulation;
 }
 .bpm-input {
-  width: 2.6em;
+  width: 80%;
+  max-width: 2.6em;
   padding: 0;
   border: 0;
   border-bottom: 4px solid var(--accent);
@@ -574,7 +575,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   border-radius: 12px;
   background: var(--surface-0);
   color: var(--text-primary);
-  font: 500 13px/1.4 var(--font-mono);
+  font: 500 16px/1.4 var(--font-mono);
   resize: vertical;
   -webkit-user-select: text;
   user-select: text;

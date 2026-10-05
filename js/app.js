@@ -411,7 +411,7 @@
       rows.length ? h('ul', { class: 'rows', id: 'songRows' }, rows) : h('p', { class: 'empty' }, t('emptyConcert')),
     );
     ui.libFoot.replaceChildren(
-      footButton(t('copyConcert'), () => copyJson(S.exportConcert(c))),
+      footButton(t('share'), () => shareSheet(S.exportConcert(c), c.name)),
       footButton(t('paste'), pasteFlow),
     );
   }
@@ -528,6 +528,7 @@
         c.name = v.concertName.slice(0, 80);
         persist(); closeSheet(); renderLib();
       }) },
+      { label: t('share'), run: () => shareSheet(S.exportConcert(c), c.name) },
       { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportConcert(c)); } },
       { label: t('delete'), kind: 'danger', run: () => confirmDelete(q(c.name), () => {
         data.concerts = data.concerts.filter(x => x !== c);
@@ -585,6 +586,7 @@
         toast(t('songUpdated', { song: s.name }));
       } },
       { label: t('copyToConcert'), run: () => copyToConcert(s) },
+      { label: t('share'), run: () => shareSheet(S.exportSong(s), s.name) },
       { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportSong(s)); } },
       { label: t('delete'), kind: 'danger', run: () => confirmDelete(q(s.name), () => {
         c.songs = c.songs.filter(x => x !== s);
@@ -607,21 +609,44 @@
 
   /* ----- JSON : copier / coller ----- */
 
-  async function copyJson(obj) {
-    const text = S.stringify(obj);
+  async function copyText(text, done, title) {
     try {
       await navigator.clipboard.writeText(text);
-      toast(t('jsonCopied'));
+      toast(done);
     } catch (e) {
       const ta = h('textarea', { class: 'json', id: 'jsonOut', readonly: true, rows: 10 });
       ta.value = text;
-      openSheet(t('copyJson'), ta, [{ label: t('close'), run: closeSheet }]);
-      setTimeout(() => { ta.focus(); ta.select(); }, 50);
+      openSheet(title, ta, [{ label: t('close'), run: closeSheet }]);
+      setTimeout(() => { ta.focus({ preventScroll: true }); ta.select(); }, 50);
     }
   }
+  const copyJson = obj => copyText(S.stringify(obj), t('jsonCopied'), t('copyJson'));
 
-  function applyImport(text) {
-    const r = S.parse(text);
+  // Partage par lien : feuille de partage du téléphone si disponible, sinon copie du lien.
+  async function shareSheet(obj, name) {
+    closeSheet();
+    let url;
+    try { url = location.href.split('#')[0] + '#k=' + await S.encodeShare(obj); } catch (e) { toast(e.message); return; }
+    const text = t('shareText', { name });
+    const actions = [];
+    if (navigator.share) {
+      actions.push({ label: t('shareSend'), kind: 'primary', run: async () => {
+        try { await navigator.share({ title: 'Klik', text, url }); closeSheet(); } catch (e) { /* partage annulé */ }
+      } });
+    }
+    actions.push({ label: t('shareCopyLink'), kind: navigator.share ? '' : 'primary', run: () => { closeSheet(); copyText(`${text}\n${url}`, t('linkCopied'), t('shareCopyLink')); } });
+    actions.push({ label: t('copyJson'), run: () => { closeSheet(); copyJson(obj); } });
+    actions.push({ label: t('cancel'), run: closeSheet });
+    openSheet(t('shareTitle', { name }), h('p', { class: 'sheet-text' }, t('shareHint')), actions);
+  }
+
+  // Texte collé : JSON, ou lien de partage Klik (ou message contenant ce lien).
+  async function parseImport(text) {
+    const token = S.shareToken(text);
+    return S.parse(token ? await S.decodeShare(token) : text);
+  }
+
+  function applyImport(r) {
     if (r.type === 'concert') {
       data.concerts.push(r.concert);
       libView = { name: 'concert', concertId: r.concert.id };
@@ -641,7 +666,7 @@
     let text = '';
     try { text = await navigator.clipboard.readText(); } catch (e) { /* lecture refusée : on passe par la zone de texte */ }
     if (text) {
-      try { applyImport(text); return; } catch (e) { openPasteSheet(text, e.message); return; }
+      try { applyImport(await parseImport(text)); return; } catch (e) { openPasteSheet(text, e.message); return; }
     }
     openPasteSheet('', '');
   }
@@ -651,12 +676,32 @@
     ta.value = text;
     const err = h('p', { class: 'form-error', role: 'alert' }, error || '');
     openSheet(t('pasteTitle'), h('div', {}, ta, err), [
-      { label: t('import'), kind: 'primary', run: () => {
-        try { applyImport(ta.value); closeSheet(); } catch (e) { err.textContent = e.message; }
+      { label: t('import'), kind: 'primary', run: async () => {
+        try { applyImport(await parseImport(ta.value)); closeSheet(); } catch (e) { err.textContent = e.message; }
       } },
       { label: t('cancel'), run: closeSheet },
     ]);
-    setTimeout(() => ta.focus(), 50);
+    setTimeout(() => ta.focus({ preventScroll: true }), 50);
+  }
+
+  // Ouverture d'un lien de partage : on propose l'import, puis on retire le jeton de l'adresse.
+  async function importFromLink() {
+    const token = S.shareToken(location.hash);
+    if (!token) return;
+    history.replaceState(null, '', location.pathname + location.search);
+    let r;
+    try { r = S.parse(await S.decodeShare(token)); } catch (e) { toast(e.message); return; }
+    const name = r.type === 'concert' ? r.concert.name : r.song.name;
+    const detail = r.type === 'concert'
+      ? t('songCount', r.concert.songs.length)
+      : `${r.song.tempo} BPM · ${r.song.signature.label}`;
+    openSheet(t('importTitle', { name }), h('p', { class: 'sheet-text' }, detail), [
+      { label: t('import'), kind: 'primary', run: () => {
+        closeSheet();
+        try { applyImport(r); ui.lib.hidden = false; } catch (e) { toast(e.message); }
+      } },
+      { label: t('cancel'), run: closeSheet },
+    ]);
   }
 
   /* ---------- liaisons ---------- */
@@ -677,7 +722,7 @@
     ui.bpmInput.value = cur.tempo;
     ui.bpm.hidden = true;
     ui.bpmInput.hidden = false;
-    ui.bpmInput.focus();
+    ui.bpmInput.focus({ preventScroll: true });
     ui.bpmInput.select();
   }
   function closeTempoEdit(commit) {
@@ -735,9 +780,21 @@
     fitTitle();
   }).observe(ui.center);
 
+  // Pas de zoom : Safari iOS ignore user-scalable=no, on bloque donc les gestes de pincement.
+  for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) {
+    document.addEventListener(ev, e => e.preventDefault(), { passive: false });
+  }
+  document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault(); }, { passive: false });
+  // Si le clavier ou le navigateur a fait défiler la page, on la remet en place.
+  const resetScroll = () => { if (window.scrollX || window.scrollY) window.scrollTo(0, 0); };
+  window.addEventListener('scroll', resetScroll);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', resetScroll);
+
   K.i18n.applyStatic(document);
   readColors();
   renderAll();
+  importFromLink();
+  window.addEventListener('hashchange', importFromLink);
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   /* ---------- PWA : service worker et mises à jour ---------- */

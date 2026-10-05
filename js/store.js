@@ -347,10 +347,51 @@
   addEventListener('pagehide', writeNow);
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') writeNow(); });
 
+  /* ---------- lien de partage ----------
+     Le JSON compact est compressé (deflate) puis encodé en base64url dans l'ancre du lien :
+     …/klik/#k=<jeton>. Préfixe « z » = compressé, « j » = JSON brut (navigateur sans compression). */
+
+  const toB64u = bytes => {
+    let s = '';
+    for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  };
+  const fromB64u = str => {
+    let s = str.replace(/-/g, '+').replace(/_/g, '/');
+    while (s.length % 4) s += '=';
+    return Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  };
+  const pipe = async (bytes, stream) =>
+    new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
+
+  async function encodeShare(obj) {
+    const raw = new TextEncoder().encode(JSON.stringify(obj));
+    if (self.CompressionStream) {
+      try { return 'z' + toB64u(await pipe(raw, new CompressionStream('deflate-raw'))); } catch (e) { /* repli ci-dessous */ }
+    }
+    return 'j' + toB64u(raw);
+  }
+
+  async function decodeShare(token) {
+    try {
+      const bytes = fromB64u(token.slice(1));
+      if (token[0] === 'j') return new TextDecoder().decode(bytes);
+      if (token[0] === 'z') return new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw')));
+    } catch (e) { /* jeton abîmé */ }
+    fail(t('errShareLink'));
+  }
+
+  // Jeton contenu dans un lien Klik (ou dans un message qui contient ce lien).
+  const shareToken = text => {
+    const m = /[#&]k=([jz][A-Za-z0-9_-]+)/.exec(String(text));
+    return m ? m[1] : null;
+  };
+
   K.store = {
     PRESETS, MIN_TEMPO, MAX_TEMPO, FormatError,
     uid, clampTempo, isPreset, defaultPattern, levels, setLevel,
     normSong, exportSong, exportConcert, stringify, parse,
     load, save,
+    encodeShare, decodeShare, shareToken,
   };
 })(self.Klik = self.Klik || {});

@@ -15,6 +15,7 @@ L'interface est en français ou en anglais selon la langue du navigateur.
   - en paysage, la barre est verticale : on monte pour accélérer.
 - **Titre du morceau** : ‹ et › passent au morceau précédent ou suivant du concert. Toucher le titre ouvre la liste.
 - **Liste ☰** : concerts et morceaux. On peut enregistrer le réglage actuel, réordonner les morceaux en glissant ≡, et copier ou coller du JSON (voir [FORMAT.md](FORMAT.md)).
+- **Partager** un concert ou un morceau : Klik crée un lien qui contient toute la setlist (compressée dans l'ancre `#k=…`, rien n'est envoyé à un serveur). On l'envoie avec la feuille de partage du téléphone (WhatsApp, SMS, mail…). La personne qui le reçoit l'ouvre, ou le copie et touche « Coller » dans Klik. Sur iPhone, un lien s'ouvre dans Safari et pas dans l'app installée sur l'écran d'accueil, qui a ses propres données : il vaut mieux copier le lien et le coller dans l'app.
 
 ## Fichiers
 
