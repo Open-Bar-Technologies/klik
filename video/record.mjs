@@ -5,6 +5,7 @@
 import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
+import { deflateRawSync } from 'node:zlib';
 
 const require = createRequire(import.meta.url);
 let pw;
@@ -23,7 +24,7 @@ const SEED = JSON.stringify({
 
 const browser = await pw.chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const ctx = await browser.newContext({
-  viewport: { width: 1080, height: 1920 }, deviceScaleFactor: 1,   // vertical 9:16
+  viewport: { width: 1920, height: 1080 }, deviceScaleFactor: 1,
   locale: 'fr-FR', colorScheme: 'dark', ignoreHTTPSErrors: true, serviceWorkers: 'block',
 });
 
@@ -38,8 +39,10 @@ await ctx.route(/^https:\/\/fonts\.(googleapis|gstatic)\.com\//, route => {
   route.fulfill({ status: 200, body: fontCache.get(url), contentType: css ? 'text/css' : 'font/woff2', headers: { 'access-control-allow-origin': '*' } });
 });
 
-// Lien reçu d'un ami (morceau « Osez Joséphine »), lu par le bouton Coller.
-const RECEIVED = 'https://klik.lonoize.com/#k=zTY6xDoJADIZfhXQmGAgm5DYdXWRkbbCBBri7XMuAxvfR5-DFvDMOJl2-fn_T_wHTzBOYKgfdPIEBcXaAHCwuia5C9-ziZH_7kS1FobR4B6YsmxyEB4u6hpSsD3W0HlUp2Mhd0RX_E-VtDajskq3MsYkbDMqikU8zss3OKOP6fS_U_5JtoIX3V6DMp3Sq0I9o01GL0uMMzw8';
+// Lien reçu d'un ami, lu par le bouton Coller : morceau réduit à l'essentiel (nom, tempo, rythme).
+const RECEIVED = 'https://klik.lonoize.com/#k=z' + deflateRawSync(Buffer.from(JSON.stringify(
+  { klik: 2, type: 'song', name: 'Osez Joséphine', tempo: 118, signature: '4/4', pattern: 'X.X..X..X..X..X.' },
+))).toString('base64url');
 const hits = [];
 let sharedUrl = null;
 await ctx.exposeBinding('__klikClipboard', () => RECEIVED);
@@ -103,12 +106,12 @@ async function center(loc) {
   const b = await loc.boundingBox();
   return [b.x + b.width / 2, b.y + b.height / 2];
 }
-async function point(x, y, glide = 320) {
+async function point(x, y, glide = 550) {
   await st('touchMove', x, y);
   await page.mouse.move(x, y);
   await wait(glide);
 }
-async function tap(loc, { glide = 320, after = 300 } = {}) {
+async function tap(loc, { glide = 550, after = 600 } = {}) {
   const [x, y] = await center(loc);
   await point(x, y, glide);
   await st('touchDown');
@@ -118,7 +121,7 @@ async function tap(loc, { glide = 320, after = 300 } = {}) {
   await st('touchUp');
   await wait(after);
 }
-async function type(text, delay = 75) {
+async function type(text, delay = 110) {
   await page.keyboard.type(text, { delay });
 }
 async function openLib(f, after = 700) {
@@ -132,154 +135,224 @@ async function press(x, y, hold = 50) {
   await page.mouse.up(); await st('touchUp');
 }
 
-/* ---------- scénario ---------- */
-await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: 1080, maxHeight: 1920, everyNthFrame: 1 });
-const t0 = Date.now();
 const pt = i => f1.locator(`.pt[data-i="${i}"]`);
+const bpm = f => f.locator('#bpm').textContent().then(Number);
 
-// 1. Le tempo de référence : on lance tout de suite le 4/4 de base.
-await st('chapter', 1);
-await caption('Le bon tempo,<br>tout de suite', 'Avant chaque morceau, Klik donne <strong>la référence</strong> : un coup d’œil, et on compte 1, 2, 3, 4.');
-await tap(f1.locator('#play'), { glide: 250, after: 3600 });
-await caption('Tape<br>le tempo', 'Quatre fois sur <span class="k">TAP</span>, en rythme. Ou maintiens et glisse pour l’ajuster.', 300);
-const [kx, ky] = await center(f1.locator('#tap'));
-await point(kx, ky);
-// Frappes calées sur une horloge absolue : l'indicateur de toucher suit sans retarder la frappe.
-const tapStart = Date.now();
-for (let i = 0; i < 5; i++) {
-  while (Date.now() < tapStart + i * 577) await new Promise(res => setTimeout(res, 2));   // 104 BPM
+// Titre de séquence sur fond noir ; `setup` prépare l'écran pendant le noir.
+async function sequence(n, title, sub, setup) {
+  await st('black', `<div class="num">${n}</div><h2>${title}</h2>${sub ? `<p>${sub}</p>` : ''}`);
+  await wait(900);
+  await st('clearCaption');
+  await st('chapter', n);
+  if (setup) await setup();
+  await wait(1900);
+  await st('unblack');
+  await wait(900);
+}
+
+// Maintenir TAP et glisser (dir +1 à droite, -1 à gauche) jusqu'au tempo voulu.
+async function dragTo(target, dir) {
+  const kb = await f1.locator('#tap').boundingBox();
+  const tb = await f1.locator('#track').boundingBox();
+  const kx = kb.x + kb.width / 2, ky = kb.y + kb.height / 2;
+  const reach = ((tb.width - kb.width) / 2) * 0.75 * dir;
+  await point(kx, ky);
+  await st('touchDrag', true);
+  await st('touchDown');
   await page.mouse.down();
-  st('touchDown');
-  await new Promise(res => setTimeout(res, 50));
+  for (let s = 1; s <= 20; s++) { const x = kx + reach * s / 20; await page.mouse.move(x, ky); await st('touchMove', x, ky); await wait(20); }
+  for (let i = 0; i < 400; i++) {
+    const v = await bpm(f1);
+    if (dir > 0 ? v >= target : v <= target) break;
+    await wait(15);
+  }
+  for (let s = 19; s >= 0; s--) { const x = kx + reach * s / 20; await page.mouse.move(x, ky); await st('touchMove', x, ky); await wait(12); }
   await page.mouse.up();
-  st('touchUp');
+  await st('touchUp');
+  await st('touchDrag', false);
+  await wait(500);
+  await st('touchHide');
 }
-await wait(100);
-await st('touchHide');
+
+/* ---------- scénario ---------- */
+await st('black', '<div class="num">1</div><h2>Le tempo</h2><p>La référence, avant chaque morceau</p>');
+await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 90, maxWidth: 1920, maxHeight: 1080, everyNthFrame: 1 });
+const t0 = Date.now();
 await wait(2600);
+await st('chapter', 1);
+await st('unblack');
+await wait(900);
 
-// 2. Accents : on dessine Dancing Queen pendant que ça joue.
-await st('chapter', 2);
-await caption('Dessine le rythme', 'Touche un point : <strong>rien → moyen → fort</strong>. Ici, Dancing Queen.', 400, true);
-await tap(pt(4), { after: 250 });
-await tap(pt(8), { after: 500 });
-for (const i of [3, 6, 9]) {
-  await tap(pt(i), { after: 120 });
-  await tap(pt(i), { glide: 80, after: 700 });
+// 1. Le tempo de référence
+await caption('Un toucher<br>sur ▶', 'Klik donne <strong>le tempo de référence</strong>. On écoute, on compte, on joue.', 2200);
+await tap(f1.locator('#play'), { after: 400 });
+await st('touchHide');
+await wait(7600);                                   // 4 mesures à 120
+await caption('Plus vite ?', 'Maintiens <span class="k">TAP</span> et glisse vers la droite.', 1800);
+await dragTo(132, 1);
+await wait(3000);
+await caption('Moins vite ?', 'Glisse vers la gauche.', 1500);
+await dragTo(96, -1);
+await wait(3000);
+await caption('Ou tape<br>le tempo', 'Quatre fois sur <span class="k">TAP</span>, en rythme.', 1800);
+{
+  const kb = await f1.locator('#tap').boundingBox();
+  const kx = kb.x + kb.width / 2, ky = kb.y + kb.height / 2;
+  await st('count', kx, kb.y - 26);
+  await point(kx, ky);
+  await wait(400);
+  // Frappes calées sur une horloge absolue : l'affichage suit sans retarder la frappe.
+  const start = Date.now();
+  for (let i = 0; i < 4; i++) {
+    while (Date.now() < start + i * 577) await new Promise(res => setTimeout(res, 2));   // 104 BPM
+    await page.mouse.down();
+    st('touchDown'); st('countHit', i);
+    await new Promise(res => setTimeout(res, 50));
+    await page.mouse.up();
+    st('touchUp');
+  }
+  await wait(1200);
+  await st('touchHide');
+  await st('countHide');
+}
+console.log('tempo après TAP :', await bpm(f1));
+await wait(4000);
+await tap(f1.locator('#play'), { after: 300 });
+await st('touchHide');
+
+// 2. Les accents
+await sequence(2, 'Les accents', 'Le rythme du morceau, pas seulement les temps');
+await caption('Chaque point,<br>un coup', 'Touche un point pour changer son accent :', 1200, true);
+await wait(2500);
+await tap(f1.locator('#play'), { after: 300 });
+await st('touchHide');
+await wait(4000);                                   // 2 mesures du 4/4 de base
+await caption('Dancing Queen', 'On dessine son rythme… pendant que ça joue.', 1500);
+for (const [i, n] of [[3, 2], [4, 1], [6, 2], [8, 1], [9, 2]]) {
+  for (let k = 0; k < n; k++) await tap(pt(i), { glide: k ? 150 : 550, after: k + 1 < n ? 500 : 1300 });
 }
 await st('touchHide');
-await wait(4000);
-await caption('Muet ?<br>Ça flashe', '<span class="k">🔊</span> coupe le son, le flash continue : le tempo en silence, pour un départ discret.', 200);
-await tap(f1.locator('#mute'), { after: 2900 });
-await tap(f1.locator('#mute'), { after: 200 });
-await tap(f1.locator('#play'), { after: 200 });
+await caption('Dancing Queen', 'Prêt à jouer : <span class="k">104 BPM</span>, temps 1, forts et silences.', 9000);
+await caption('Muet ?', '<span class="k">🔊</span> coupe le son. <strong>Le flash continue</strong> : on voit le tempo sans l’entendre.', 1800);
+await tap(f1.locator('#mute'), { after: 300 });
+await st('touchHide');
+await wait(5000);
+await tap(f1.locator('#mute'), { after: 2000 });
+await tap(f1.locator('#play'), { after: 300 });
+await st('touchHide');
 
-// 3. Setlist.
-await st('chapter', 3);
-await caption('Une setlist<br>par concert', '<span class="k">☰</span> → nouveau concert, puis on enregistre le réglage.', 0);
-await tap(f1.locator('#openLibrary'), { after: 500 });
-await tap(f1.locator('.btn', { hasText: 'Nouveau concert' }), { after: 250 });
-await type('Bal du samedi', 55);
-await tap(f1.locator('.sheet .btn.primary'), { after: 500 });
+// 3. La setlist
+await sequence(3, 'Ta setlist', 'Les morceaux du concert, dans l’ordre');
+await caption('Un concert', '<span class="k">☰</span>, puis « Nouveau concert ».', 1500);
+await tap(f1.locator('#openLibrary'), { after: 1200 });
+await tap(f1.locator('.btn', { hasText: 'Nouveau concert' }), { after: 500 });
+await type('Bal du samedi');
+await wait(600);
+await tap(f1.locator('.sheet .btn.primary'), { after: 1500 });
 async function saveCurrent(name) {
-  await tap(f1.locator('.save-current'), { after: 250 });
-  await type(name, 55);
-  await wait(150);
-  await tap(f1.locator('.sheet .btn.primary'), { after: 800 });
+  await tap(f1.locator('.save-current'), { after: 600 });
+  await type(name);
+  await wait(800);
+  await tap(f1.locator('.sheet .btn.primary'), { after: 2200 });
 }
+await caption('On enregistre', 'Le réglage actuel devient un morceau du concert.', 1800);
 await saveCurrent('Dancing Queen');
-await tap(f1.locator('#libClose'), { after: 200 });
-
-async function tempoEntry(v) {
+await caption('Un rock<br>tout simple', 'On revient au <span class="k">4/4</span> de base, à <span class="k">168</span>.', 1500);
+await tap(f1.locator('#libClose'), { after: 1000 });
+await tap(f1.locator('.chip', { hasText: '4/4' }), { after: 1200 });
+await caption('Un rock<br>tout simple', 'Deux touchers sur le chiffre pour taper le tempo.', 1200);
+{
   const [x, y] = await center(f1.locator('#bpm'));
   await point(x, y);
   await press(x, y); await wait(80); await press(x, y);
-  await wait(300);
-  await type(String(v), 100);
+  await wait(700);
+  await type('168', 250);
+  await wait(500);
   await page.keyboard.press('Enter');
-  await wait(400);
+  await wait(1200);
 }
-await caption('Un rock<br>tout simple', '<span class="k">4/4</span>, deux touchers sur le chiffre pour taper <span class="k">168</span>, et on l’enregistre.', 0);
-await tap(f1.locator('.chip', { hasText: '4/4' }), { after: 300 });
-await tempoEntry(168);
-await openLib(f1, 300);
+await openLib(f1, 600);
 await saveCurrent('Johnny B. Goode');
-
-await caption('Un morceau<br>reçu ?', 'Copie le lien reçu, touche <span class="k">Coller</span> : il rejoint la liste.', 200);
-await tap(f1.locator('.lib-foot .btn', { hasText: 'Coller' }), { after: 1300 });
-// Le rock en premier : glisser ≡.
-const handle = f1.locator('#songRows li').nth(1).locator('.handle');
-const [hx, hy] = await center(handle);
-const [, ty] = await center(f1.locator('#songRows li').nth(0));
-await point(hx, hy);
-await st('touchDown'); await page.mouse.down();
-for (let s = 1; s <= 16; s++) { const y = hy + (ty - 20 - hy) * s / 16; await page.mouse.move(hx, y); await st('touchMove', hx, y); await wait(25); }
-await wait(150);
-await page.mouse.up(); await st('touchUp');
-await wait(600);
-
-await caption('Sur scène :<br>‹ › et ça joue', 'Morceau suivant : le tempo et le rythme changent d’un toucher.', 0);
-await tap(f1.locator('#songRows li').nth(0).locator('.row-main'), { after: 400 });
+await caption('Un morceau<br>reçu ?', 'Un ami t’envoie un lien : touche <span class="k">Coller</span>.', 1800);
+await tap(f1.locator('.lib-foot .btn', { hasText: 'Coller' }), { after: 2800 });
+await caption('Dans l’ordre', 'Glisse <span class="k">≡</span> : le rock passe en premier.', 1800);
+{
+  const [hx, hy] = await center(f1.locator('#songRows li').nth(1).locator('.handle'));
+  const [, ty] = await center(f1.locator('#songRows li').nth(0));
+  await point(hx, hy);
+  await st('touchDrag', true);
+  await st('touchDown'); await page.mouse.down();
+  for (let s = 1; s <= 30; s++) { const y = hy + (ty - 20 - hy) * s / 30; await page.mouse.move(hx, y); await st('touchMove', hx, y); await wait(30); }
+  await wait(300);
+  await page.mouse.up(); await st('touchUp'); await st('touchDrag', false);
+  await wait(2000);
+}
+await caption('Sur scène', 'On lance le premier, puis <span class="k">›</span> pour le suivant.', 1800);
+await tap(f1.locator('#songRows li').nth(0).locator('.row-main'), { after: 1500 });
 await tap(f1.locator('#play'), { after: 200 });
 await st('touchHide');
-await wait(3200);                                  // Johnny B. Goode, 168
-await tap(f1.locator('#next'), { after: 200 });
+await caption('Johnny B. Goode', '<span class="k">168 BPM</span> · le 4/4 tout simple.', 5800);
+await tap(f1.locator('#next'), { glide: 450, after: 100 });
 await st('touchHide');
-await wait(4700);                                  // Dancing Queen, 104
-await tap(f1.locator('#next'), { after: 200 });
+await caption('Dancing Queen', '<span class="k">104 BPM</span> · le groove.', 9300);
+await tap(f1.locator('#next'), { glide: 450, after: 100 });
 await st('touchHide');
-await wait(4300);                                  // Osez Joséphine, 118
-await tap(f1.locator('#play'), { after: 200 });
+await caption('Osez Joséphine', '<span class="k">118 BPM</span> · un rythme inhabituel.', 8300);
+await tap(f1.locator('#play'), { after: 300 });
+await st('touchHide');
 
-// 4. Partage.
-await st('chapter', 4);
-await st('mode', 'duo');
-await st('labels', true);
-await caption('Toute la setlist<br>dans un lien', 'Partager → Envoyer, par WhatsApp, SMS ou mail. Sans compte, sans serveur.', 1000);
-await openLib(f1, 400);
-await tap(f1.locator('.lib-foot .btn', { hasText: 'Partager' }), { after: 600 });
+// 4. Le partage
+await sequence(4, 'Partager', 'La setlist pour tout le groupe', async () => {
+  await st('mode', 'duo');
+  await st('labels', true);
+  await wait(1000);
+});
+await caption('Tout le concert<br>dans un lien', 'Partager → « Envoyer le lien… » par WhatsApp, SMS ou mail.', 2000);
+await openLib(f1, 1000);
+await tap(f1.locator('.lib-foot .btn', { hasText: 'Partager' }), { after: 2000 });
 sharedUrl = null;
-await tap(f1.locator('.sheet .btn.primary'), { after: 100 });
+await tap(f1.locator('.sheet .btn.primary'), { after: 200 });
 await st('touchHide');
 await st('bubble');
-await wait(1300);
+await wait(2400);
 async function receive() {
   for (let i = 0; i < 50 && !sharedUrl; i++) await wait(50);
   const hash = new URL(sharedUrl).hash;
   await frame2().evaluate(h => { location.hash = h; }, hash);
 }
 await receive();
-await wait(700);
-await caption('Le batteur<br>est prêt', 'Il touche le lien : le concert est importé, même hors-ligne.', 200);
-await tap(f2.locator('.sheet .btn.primary'), { after: 1000 });
-await tap(f2.locator('#songRows li').nth(1).locator('.row-main'), { after: 300 });
+await caption('Le batteur<br>l’ouvre', 'Le concert s’importe. Pas de compte, pas de serveur, même hors-ligne.', 2800);
+await tap(f2.locator('.sheet .btn.primary'), { after: 2500 });
+await tap(f2.locator('#songRows li').nth(1).locator('.row-main'), { after: 1200 });
 await tap(f2.locator('#play'), { after: 200 });
 await st('touchHide');
-await wait(2600);
-await tap(f2.locator('#play'), { after: 200 });
+await wait(4800);
+await tap(f2.locator('#play'), { after: 800 });
+await st('touchHide');
 
-await caption('Une modif ?<br>On renvoie', 'Klik reconnaît le concert et propose la mise à jour.', 0);
-await openLib(f1, 300);
-await tap(f1.locator('#songRows li').nth(0).locator('.row-more'), { after: 300 });
-await tap(f1.locator('.sheet .btn', { hasText: 'Modifier le nom et le tempo' }), { after: 300 });
-await tap(f1.locator('#songTempo'), { after: 100 });
+await caption('Une modif ?', 'Tu changes un tempo, puis tu renvoies le lien.', 1500);
+await openLib(f1, 800);
+await tap(f1.locator('#songRows li').nth(0).locator('.row-more'), { after: 900 });
+await tap(f1.locator('.sheet .btn', { hasText: 'Modifier le nom et le tempo' }), { after: 800 });
+await tap(f1.locator('#songTempo'), { after: 300 });
 await page.keyboard.press('Control+A');
-await type('176', 100);
-await tap(f1.locator('.sheet .btn.primary'), { after: 500 });
+await type('176', 250);
+await wait(700);
+await tap(f1.locator('.sheet .btn.primary'), { after: 1500 });
 sharedUrl = null;
-await tap(f1.locator('.lib-foot .btn', { hasText: 'Partager' }), { after: 500 });
-await tap(f1.locator('.sheet .btn.primary'), { after: 100 });
+await tap(f1.locator('.lib-foot .btn', { hasText: 'Partager' }), { after: 1200 });
+await tap(f1.locator('.sheet .btn.primary'), { after: 200 });
 await st('touchHide');
 await st('bubble');
-await wait(1300);
+await wait(2400);
 await receive();
-await wait(900);
-await tap(f2.locator('.sheet .btn.primary'), { after: 1800 });
+await caption('Le batteur<br>met à jour', 'Klik reconnaît le concert et propose la nouvelle version.', 3500);
+await tap(f2.locator('.sheet .btn.primary'), { after: 3000 });
 await st('touchHide');
 
 // Fin
-await st('card', 'outro', true);
-await wait(3200);
+await st('black', '<div class="logo">K</div><h2>Klik</h2><p>Gratuit · hors-ligne · s’installe sur l’écran d’accueil</p><div class="url">klik.lonoize.com</div>');
+await wait(5000);
 
 await cdp.send('Page.stopScreencast');
 await wait(300);

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Klik · vidéo</title>
-<!-- Format vertical 9:16 : la scène est dessinée en 720×1280 puis agrandie ×1,5 → 1080×1920. -->
+<!-- Format 16:9, 1920×1080. Textes très gros : la vidéo doit rester lisible sur un téléphone. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
   :root {
@@ -14,97 +14,101 @@
     --sans: "IBM Plex Sans", system-ui, sans-serif;
   }
   * { box-sizing: border-box; }
-  html, body { margin: 0; width: 1080px; height: 1920px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--sans); }
-  #root { position: absolute; left: 0; top: 0; width: 720px; height: 1280px; transform: scale(1.5); transform-origin: 0 0; }
-  #root::before {
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink); font-family: var(--sans); }
+  body::before {
     content: ""; position: absolute; inset: 0;
-    background: radial-gradient(520px 640px at 50% 72%, rgba(52,166,90,.15), transparent 70%);
+    background: radial-gradient(800px 700px at 78% 50%, rgba(52,166,90,.14), transparent 70%);
   }
 
-  /* ---------- chapitres ---------- */
-  .chapters { position: absolute; left: 0; right: 0; top: 26px; display: flex; justify-content: center; gap: 8px; }
-  .chap { font: 600 15px var(--mono); color: var(--ink2); border: 2px solid var(--line); border-radius: 999px; padding: 5px 13px; transition: all .4s; }
+  /* ---------- chapitres (repère discret) ---------- */
+  .chapters { position: absolute; left: 110px; top: 70px; display: flex; gap: 12px; }
+  .chap { font: 600 22px var(--mono); color: var(--ink2); border: 2px solid var(--line); border-radius: 999px; padding: 7px 18px; transition: all .4s; }
   .chap.on { color: #04140a; background: var(--accent); border-color: var(--accent); }
   .chap.done { color: var(--ink); border-color: var(--accent-soft); }
 
   /* ---------- légende ---------- */
-  .caption { position: absolute; left: 36px; right: 36px; top: 78px; height: 210px; text-align: center; z-index: 10; }
-  .caption h1 { font: 900 64px/0.95 var(--display); text-transform: uppercase; margin: 0 0 12px; }
-  .caption p { font: 500 27px/1.3 var(--sans); color: #d3dcd4; margin: 0; }
+  .caption { position: absolute; left: 110px; top: 210px; width: 1060px; transition: width .9s cubic-bezier(.2,.7,.2,1); }
+  body.duo .caption { width: 820px; }
+  .caption h1 { font: 900 132px/0.92 var(--display); text-transform: uppercase; margin: 0 0 34px; }
+  .caption p { font: 500 52px/1.28 var(--sans); color: #d3dcd4; margin: 0; }
   .caption p strong { color: var(--ink); font-weight: 600; }
-  .caption p .k { font: 600 .92em var(--mono); color: var(--accent); }
-  .caption > * { transition: opacity .3s ease, transform .4s cubic-bezier(.2,.7,.3,1); }
-  .caption.out > * { opacity: 0; transform: translateY(-12px); }
-  .caption.in > * { opacity: 0; transform: translateY(18px); }
-  .caption.in > :nth-child(2) { transition-delay: .05s; }
+  .caption p .k { font: 600 .9em var(--mono); color: var(--accent); }
+  .caption > * { transition: opacity .35s ease, transform .5s cubic-bezier(.2,.7,.3,1); }
+  .caption.out > * { opacity: 0; transform: translateY(-16px); }
+  .caption.in > * { opacity: 0; transform: translateY(24px); }
+  .caption.in > :nth-child(2) { transition-delay: .08s; }
+  .caption.in > :nth-child(3) { transition-delay: .16s; }
 
-  .legend { display: flex; justify-content: center; gap: 24px; margin-top: 14px; }
-  .legend div { display: flex; align-items: center; gap: 9px; font: 600 22px var(--sans); opacity: 0; transform: translateY(10px); transition: all .35s; }
+  .legend { display: flex; gap: 40px; margin-top: 50px; }
+  .legend div { display: flex; align-items: center; gap: 16px; font: 600 42px var(--sans); opacity: 0; transform: translateY(12px); transition: all .4s; }
   .legend div.on { opacity: 1; transform: none; }
-  .legend i { height: 34px; display: grid; place-items: center; }
-  .legend .dn { width: 22px; height: 22px; background: var(--ink); transform: rotate(45deg); border-radius: 3px; }
-  .legend .st { width: 30px; height: 30px; background: var(--accent); border-radius: 50%; }
-  .legend .md { width: 24px; height: 24px; background: var(--accent-soft); border: 3px solid var(--accent); border-radius: 50%; }
-  .legend .no { width: 14px; height: 14px; border: 3px solid var(--ink2); border-radius: 50%; }
-  .legend em { font: 500 17px var(--sans); font-style: normal; color: var(--ink2); margin-top: -6px; }
+  .legend .dn { width: 34px; height: 34px; background: var(--ink); transform: rotate(45deg); border-radius: 4px; }
+  .legend .st { width: 46px; height: 46px; background: var(--accent); border-radius: 50%; }
+  .legend .md { width: 36px; height: 36px; background: var(--accent-soft); border: 4px solid var(--accent); border-radius: 50%; }
+  .legend .no { width: 22px; height: 22px; border: 4px solid var(--ink2); border-radius: 50%; }
 
   /* ---------- téléphones ---------- */
-  .phone { position: absolute; top: 300px; left: 153px; width: 414px; height: 868px; border-radius: 58px; padding: 12px;
-    transform-origin: 0 0;
+  .phone { position: absolute; top: 0; left: 0; width: 414px; height: 868px; border-radius: 58px; padding: 12px; transform-origin: 0 0;
     background: linear-gradient(145deg, #2b332d, #141a15 40%, #222a24);
-    box-shadow: 0 0 0 2px #39433b, 0 30px 70px rgba(0,0,0,.6), 0 0 120px rgba(52,166,90,.14);
-    transition: transform .9s cubic-bezier(.2,.7,.2,1), opacity .7s; }
+    box-shadow: 0 0 0 2px #39433b, 0 40px 90px rgba(0,0,0,.6), 0 0 140px rgba(52,166,90,.14);
+    transition: transform 1s cubic-bezier(.2,.7,.2,1), opacity .8s; }
   .phone iframe { width: 390px; height: 844px; border: 0; border-radius: 46px; display: block; background: var(--bg); }
-  .phone .label { position: absolute; top: -50px; left: 0; right: 0; text-align: center; font: 600 26px var(--mono); color: var(--accent); letter-spacing: .04em; opacity: 0; transition: opacity .5s; }
+  .phone .label { position: absolute; top: -62px; left: 0; right: 0; text-align: center; font: 600 34px var(--mono); color: var(--accent); opacity: 0; transition: opacity .5s; }
   .phone.labelled .label { opacity: 1; }
-  #p2 { opacity: 0; transform: translate(560px, 70px) scale(.82); }
-  #root.duo #p1 { transform: translate(-145px, 70px) scale(.82); }
-  #root.duo #p2 { opacity: 1; transform: translate(207px, 70px) scale(.82); }
+  #p1 { transform: translate(1300px, 46px) scale(1.14); }
+  #p2 { opacity: 0; transform: translate(1980px, 130px) scale(.96); }
+  body.duo #p1 { transform: translate(1010px, 130px) scale(.96); }
+  body.duo #p2 { opacity: 1; transform: translate(1460px, 130px) scale(.96); }
+
+  /* ---------- compteur de TAP ---------- */
+  .count { position: absolute; display: flex; gap: 14px; transform: translate(-50%, -100%); z-index: 40; pointer-events: none; opacity: 0; transition: opacity .3s; }
+  .count.on { opacity: 1; }
+  .count b { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; font: 700 36px var(--mono);
+    border: 3px solid var(--ink2); color: var(--ink2); background: rgba(11,15,12,.85); transition: all .12s; }
+  .count b.hit { background: var(--accent); border-color: var(--accent); color: #04140a; transform: scale(1.15); }
 
   /* ---------- message envoyé ---------- */
-  .bubble { position: absolute; left: 40px; top: 760px; width: 300px; padding: 16px 18px; border-radius: 20px 20px 20px 6px;
-    background: #1f2a22; border: 2px solid var(--accent); font: 600 21px/1.3 var(--sans); color: var(--ink);
-    box-shadow: 0 20px 50px rgba(0,0,0,.6); opacity: 0; z-index: 20; pointer-events: none; }
-  .bubble small { display: block; font: 500 16px var(--mono); color: var(--accent); margin-top: 6px; word-break: break-all; }
-  .bubble .who { font: 600 14px var(--mono); color: var(--ink2); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px; }
-  .bubble.go { animation: fly 2.2s cubic-bezier(.45,.05,.3,1) forwards; }
+  .bubble { position: absolute; left: 1060px; top: 520px; width: 380px; padding: 20px 24px; border-radius: 24px 24px 24px 8px;
+    background: #1f2a22; border: 3px solid var(--accent); font: 600 28px/1.3 var(--sans); color: var(--ink);
+    box-shadow: 0 24px 60px rgba(0,0,0,.6); opacity: 0; z-index: 20; pointer-events: none; }
+  .bubble small { display: block; font: 500 20px var(--mono); color: var(--accent); margin-top: 8px; word-break: break-all; }
+  .bubble .who { font: 600 18px var(--mono); color: var(--ink2); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
+  .bubble.go { animation: fly 3s cubic-bezier(.45,.05,.3,1) forwards; }
   @keyframes fly {
     0% { opacity: 0; transform: translate(0, 30px) scale(.6); }
-    15% { opacity: 1; transform: translate(0, 0) scale(1); }
-    55% { opacity: 1; transform: translate(0, 0) scale(1); }
-    100% { opacity: 0; transform: translate(360px, -40px) scale(.7); }
+    12% { opacity: 1; transform: translate(0, 0) scale(1); }
+    60% { opacity: 1; transform: translate(0, 0) scale(1); }
+    100% { opacity: 0; transform: translate(460px, -40px) scale(.7); }
   }
 
   /* ---------- doigt ---------- */
-  .touch { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; pointer-events: none; z-index: 50;
-    background: rgba(255,255,255,.28); border: 3px solid rgba(255,255,255,.85); box-shadow: 0 6px 24px rgba(0,0,0,.4);
+  .touch { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%; pointer-events: none; z-index: 50;
+    background: rgba(255,255,255,.28); border: 4px solid rgba(255,255,255,.9); box-shadow: 0 6px 24px rgba(0,0,0,.4);
     opacity: 0; transform: scale(1.25);
-    transition: opacity .18s, transform .18s, left .28s cubic-bezier(.3,.7,.3,1), top .28s cubic-bezier(.3,.7,.3,1); }
+    transition: opacity .2s, transform .2s, left .45s cubic-bezier(.3,.7,.3,1), top .45s cubic-bezier(.3,.7,.3,1); }
   .touch.on { opacity: 1; transform: scale(1); }
+  .touch.drag { transition: opacity .2s, transform .2s; }
   .touch.press { transform: scale(.78); background: rgba(255,255,255,.45); }
-  .ripple { position: absolute; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%; border: 3px solid rgba(255,255,255,.9);
-    pointer-events: none; z-index: 49; animation: rip .5s ease-out forwards; }
+  .ripple { position: absolute; width: 70px; height: 70px; margin: -35px 0 0 -35px; border-radius: 50%; border: 4px solid rgba(255,255,255,.9);
+    pointer-events: none; z-index: 49; animation: rip .55s ease-out forwards; }
   @keyframes rip { from { transform: scale(.6); opacity: 1; } to { transform: scale(2.1); opacity: 0; } }
 
-  /* ---------- fin ---------- */
-  .card { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; z-index: 30; pointer-events: none;
-    background: rgba(11,15,12,.0); transition: background .6s; }
-  .card.on { background: rgba(11,15,12,.94); }
-  .card > * { opacity: 0; transform: translateY(24px); transition: opacity .5s, transform .7s cubic-bezier(.2,.7,.2,1); }
-  .card.on > * { opacity: 1; transform: none; }
-  .card.on > :nth-child(2) { transition-delay: .1s; }
-  .card.on > :nth-child(3) { transition-delay: .2s; }
-  .card.on > :nth-child(4) { transition-delay: .3s; }
-  .logo { width: 170px; height: 170px; margin: 0 auto 26px; border-radius: 50%; border: 6px solid var(--ink); display: grid; place-items: center; position: relative; font: 900 80px var(--display); }
-  .logo::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; animation: beat .6s infinite; }
-  @keyframes beat { 0% { box-shadow: 0 0 0 0 var(--accent), 0 0 0 0 rgba(64,196,108,.5); } 100% { box-shadow: 0 0 0 20px rgba(52,166,90,0), 0 0 50px 26px rgba(64,196,108,0); } }
-  .card h2 { font: 900 130px/0.9 var(--display); margin: 0; text-transform: uppercase; }
-  .card p { font: 500 30px/1.4 var(--sans); color: #d3dcd4; margin: 18px 0 0; }
-  .card .url { font: 600 32px var(--mono); color: var(--accent); margin-top: 34px; }
+  /* ---------- noir entre les séquences ---------- */
+  .black { position: absolute; inset: 0; background: #000; z-index: 60; display: grid; place-content: center; text-align: center;
+    opacity: 1; transition: opacity .7s ease; pointer-events: none; }
+  .black.off { opacity: 0; }
+  .black > * { opacity: 0; transform: translateY(20px); transition: opacity .6s .2s, transform .8s .2s cubic-bezier(.2,.7,.2,1); }
+  .black.text > * { opacity: 1; transform: none; }
+  .black .num { font: 600 44px var(--mono); color: var(--accent); margin-bottom: 18px; }
+  .black h2 { font: 900 170px/0.9 var(--display); text-transform: uppercase; margin: 0; }
+  .black p { font: 500 46px/1.35 var(--sans); color: #c9d3ca; margin: 26px 0 0; }
+  .black .logo { width: 200px; height: 200px; margin: 0 auto 36px; border-radius: 50%; border: 7px solid var(--ink); display: grid; place-items: center; font: 900 96px var(--display); position: relative; }
+  .black .logo::after { content: ""; position: absolute; inset: -7px; border-radius: 50%; animation: beat .6s infinite; }
+  @keyframes beat { 0% { box-shadow: 0 0 0 0 var(--accent), 0 0 0 0 rgba(64,196,108,.5); } 100% { box-shadow: 0 0 0 24px rgba(52,166,90,0), 0 0 60px 30px rgba(64,196,108,0); } }
+  .black .url { font: 600 44px var(--mono); color: var(--accent); margin-top: 40px; }
 </style>
 </head>
 <body>
-<div id="root">
   <nav class="chapters" id="chapters">
     <span class="chap">1 Tempo</span>
     <span class="chap">2 Accents</span>
@@ -118,30 +122,29 @@
   <div class="phone" id="p2"><div class="label">LE BATTEUR</div><iframe id="f2" allow="autoplay"></iframe></div>
 
   <div class="bubble" id="bubble"><div class="who">Message · Le groupe</div>« Bal du samedi » pour Klik<small>klik.lonoize.com/#k=zTY6xDo…</small></div>
-
-  <div class="card" id="outro">
-    <div class="logo">K</div>
-    <h2>Klik</h2>
-    <p>Gratuit · hors-ligne<br>s'installe sur l'écran d'accueil</p>
-    <div class="url">klik.lonoize.com</div>
-  </div>
-
+  <div class="count" id="count"><b>1</b><b>2</b><b>3</b><b>4</b></div>
   <div class="touch" id="touch"></div>
-</div>
+  <div class="black" id="black"></div>
 
 <script>
   const $ = s => document.querySelector(s);
-  const ZOOM = 1.5;   // coordonnées de la souris (px de l'écran) → px de la scène
   window.stage = {
     load(id, src) { $('#' + id).src = src; },
-    mode(cls) { $('#root').className = cls; },
-    card(id, on) { $('#' + id).classList.toggle('on', on); },
+    mode(cls) { document.body.className = cls; },
     chapter(n) {
       [...document.querySelectorAll('.chap')].forEach((c, i) => {
         c.classList.toggle('on', i + 1 === n);
         c.classList.toggle('done', i + 1 < n);
       });
     },
+    // Noir plein écran, avec un titre de séquence (html) ou vide.
+    black(html) {
+      const b = $('#black');
+      b.classList.remove('off', 'text');
+      b.innerHTML = html || '';
+      if (html) setTimeout(() => b.classList.add('text'), 250);
+    },
+    unblack() { $('#black').classList.remove('text'); setTimeout(() => $('#black').classList.add('off'), 250); },
     caption(title, body, legend) {
       const c = $('#caption');
       const show = () => {
@@ -152,29 +155,34 @@
           const l = document.createElement('div');
           l.className = 'legend';
           l.innerHTML = `
-            <div><i><span class="dn"></span></i>Temps 1</div>
-            <div><i><span class="st"></span></i>Fort</div>
-            <div><i><span class="md"></span></i>Moyen</div>
-            <div><i><span class="no"></span></i>Rien</div>`;
+            <div><span class="dn"></span>Temps 1</div>
+            <div><span class="st"></span>Fort</div>
+            <div><span class="md"></span>Moyen</div>
+            <div><span class="no"></span>Rien</div>`;
           c.append(l);
-          [...l.children].forEach((d, i) => setTimeout(() => d.classList.add('on'), 250 + i * 220));
+          [...l.children].forEach((d, i) => setTimeout(() => d.classList.add('on'), 400 + i * 300));
         }
         c.classList.remove('out'); c.classList.add('in');
         requestAnimationFrame(() => requestAnimationFrame(() => c.classList.remove('in')));
       };
       if (!c.children[0].innerHTML) { show(); return; }
       c.classList.add('out');
-      setTimeout(show, 300);
+      setTimeout(show, 350);
     },
+    clearCaption() { const c = $('#caption'); c.children[0].innerHTML = ''; c.children[1].innerHTML = ''; const l = c.querySelector('.legend'); if (l) l.remove(); },
     labels(on) { document.querySelectorAll('.phone').forEach(p => p.classList.toggle('labelled', on)); },
     bubble() { const b = $('#bubble'); b.classList.remove('go'); void b.offsetWidth; b.classList.add('go'); },
-    touchMove(x, y) { const t = $('#touch'); t.style.left = x / ZOOM + 'px'; t.style.top = y / ZOOM + 'px'; t.classList.add('on'); },
+    count(x, y) { const c = $('#count'); c.style.left = x + 'px'; c.style.top = y + 'px'; [...c.children].forEach(b => b.classList.remove('hit')); c.classList.add('on'); },
+    countHit(i) { $('#count').children[i].classList.add('hit'); },
+    countHide() { $('#count').classList.remove('on'); },
+    touchMove(x, y) { const t = $('#touch'); t.style.left = x + 'px'; t.style.top = y + 'px'; t.classList.add('on'); },
+    touchDrag(on) { $('#touch').classList.toggle('drag', on); },
     touchDown() { $('#touch').classList.add('press'); },
     touchUp() {
       const t = $('#touch'); t.classList.remove('press');
       const r = document.createElement('div'); r.className = 'ripple';
       r.style.left = t.style.left; r.style.top = t.style.top;
-      $('#root').append(r); setTimeout(() => r.remove(), 550);
+      document.body.append(r); setTimeout(() => r.remove(), 600);
     },
     touchHide() { $('#touch').classList.remove('on', 'press'); },
   };

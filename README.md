@@ -3,7 +3,7 @@
 Tempo de référence pour le groupe avant chaque morceau, avec une setlist par concert.
 Klik est une PWA : elle s'installe sur l'écran d'accueil et fonctionne sans réseau.
 L'interface est en français ou en anglais selon la langue du navigateur.
-Présentation en vidéo (1 min 25, format vertical) : [video/klik-presentation.mp4](video/klik-presentation.mp4).
+Présentation en vidéo (4 min) : [video/klik-presentation.mp4](video/klik-presentation.mp4).
 
 ## Utilisation
 
