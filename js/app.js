@@ -869,6 +869,11 @@
   if (window.visualViewport) window.visualViewport.addEventListener('resize', resetScroll);
 
   K.i18n.applyStatic(document);
+  // Exemples intégrés encore intacts : dans la langue de l'utilisateur.
+  const remap = S.localizeBuiltins(data.concerts);
+  if (remap[cur.concertId] && remap[cur.concertId][cur.songId]) cur.songId = remap[cur.concertId][cur.songId];
+  if (Object.keys(remap).length) S.save(data);
+
   // Concerts créés avant les dates de modification : on les date d'aujourd'hui.
   for (const c of data.concerts) {
     if (!c.fp) c.fp = S.fingerprint(c);

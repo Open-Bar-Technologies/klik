@@ -41,7 +41,7 @@ L'interface est en français ou en anglais selon la langue du navigateur.
 
 - `icons/icon.svg` est la source de l'icône. Les PNG (`icon-192`, `icon-512`, `apple-touch-icon`, `favicon-32`) en sont tirés.
 - `icons/og.png` (1200×630) est l'image d'aperçu affichée quand on colle l'adresse de Klik dans une messagerie.
-- La balise `og:image` de `index.html` est relative. WhatsApp et Facebook exigent une adresse complète : il faut la remplacer par l'URL définitive du site (par exemple `https://klik.mon-domaine.fr/icons/og.png`).
+- Les balises d'aperçu de `index.html` (`og:image`, `og:url`, `canonical`) pointent vers `https://klik.lonoize.com/`. Si le site change d'adresse, il faut les modifier.
 
 ## Déploiement sur GitHub Pages
 

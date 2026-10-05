@@ -233,14 +233,16 @@
 
   /* ---------- stockage local ---------- */
 
-  function demoConcert() {
+  const tl = (l, key) => K.i18n.tl(l, key);
+
+  function demoConcert(l = K.i18n.lang) {
     return normConcert({
-      name: t('demoConcert'),
+      name: tl(l, 'demoConcert'),
       songs: [
-        { name: t('demoRock'), tempo: 120, signature: '4/4', pattern: 'X.x.X.x.X.x.X.x.' },
+        { name: tl(l, 'demoRock'), tempo: 120, signature: '4/4', pattern: 'X.x.X.x.X.x.X.x.' },
         { name: 'Tresillo', tempo: 100, signature: '4/4', pattern: 'X.....X.....X...' },
-        { name: t('demoWaltz'), tempo: 168, signature: '3/4', pattern: 'X...X...X...' },
-        { name: t('demoBallad'), tempo: 52, signature: '6/8', pattern: 'X.x.x.X.x.x.' },
+        { name: tl(l, 'demoWaltz'), tempo: 168, signature: '3/4', pattern: 'X...X...X...' },
+        { name: tl(l, 'demoBallad'), tempo: 52, signature: '6/8', pattern: 'X.x.x.X.x.x.' },
         { name: 'Shuffle boogie', tempo: 112, signature: { label: '12/8', steps: 12, stepsPerBeat: 3 }, pattern: 'X.xX.xX.xX.x' },
       ],
     });
@@ -249,17 +251,39 @@
   // Les claves (2 mesures) sont écrites sur une mesure de 4/4 en doubles-croches :
   // même motif, tempo à la blanche de la version « 2 mesures ».
   const LATIN_NAMES = [K.i18n.STRINGS.fr.latinConcert, K.i18n.STRINGS.en.latinConcert];
-  function latinConcert() {
+  function latinConcert(l = K.i18n.lang) {
     return normConcert({
-      name: t('latinConcert'),
+      name: tl(l, 'latinConcert'),
       songs: [
-        { name: t('latinSalsa'), tempo: 95, signature: '4/4', pattern: 'X..X..X...X.X...' },
-        { name: t('latinRumba'), tempo: 85, signature: '4/4', pattern: 'X..X...X..X.X...' },
-        { name: t('latinSamba'), tempo: 100, signature: '2/4', pattern: 'X..xX..x' },
+        { name: tl(l, 'latinSalsa'), tempo: 95, signature: '4/4', pattern: 'X..X..X...X.X...' },
+        { name: tl(l, 'latinRumba'), tempo: 85, signature: '4/4', pattern: 'X..X...X..X.X...' },
+        { name: tl(l, 'latinSamba'), tempo: 100, signature: '2/4', pattern: 'X..xX..x' },
         { name: 'Cha-cha-cha', tempo: 120, signature: '4/4', pattern: 'X...X...X...X.x.' },
         { name: 'Bossa nova', tempo: 65, signature: '4/4', pattern: 'X..X..X...X..X..' },
       ],
     });
+  }
+
+  // Exemples intégrés restés intacts mais créés dans une autre langue : on les traduit.
+  // Un exemple modifié (nom, tempo, motif, ordre…) ne correspond plus et n'est pas touché.
+  // Renvoie, pour chaque concert traduit, la correspondance ancien id de morceau → nouvel id.
+  function localizeBuiltins(concerts) {
+    const lang = K.i18n.lang;
+    const remap = {};
+    for (const build of [demoConcert, latinConcert]) {
+      const target = build(lang);
+      const others = Object.keys(K.i18n.STRINGS).filter(l => l !== lang).map(l => fingerprint(build(l)));
+      for (const c of concerts) {
+        if (!others.includes(fingerprint(c))) continue;
+        const ids = {};
+        c.songs.forEach((s, i) => { ids[s.id] = target.songs[i].id; });
+        c.name = target.name;
+        c.songs = target.songs;
+        delete c.fp;
+        remap[c.id] = ids;
+      }
+    }
+    return remap;
   }
 
   function fresh() {
@@ -416,7 +440,7 @@
   K.store = {
     PRESETS, MIN_TEMPO, MAX_TEMPO, FormatError,
     uid, clampTempo, isPreset, defaultPattern, levels, setLevel,
-    normSong, exportSong, exportConcert, stringify, parse, fingerprint,
+    normSong, exportSong, exportConcert, stringify, parse, fingerprint, localizeBuiltins,
     load, save,
     encodeShare, decodeShare, shareToken,
   };

@@ -4,7 +4,7 @@
 // l'active avec le bandeau « Mettre à jour ».
 //
 // SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
-const VERSION = '0.10.0';
+const VERSION = '0.11.0';
 
 const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';

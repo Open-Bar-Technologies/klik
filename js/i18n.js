@@ -1,10 +1,11 @@
 // Textes de l'interface en français et en anglais, choisis selon la langue du navigateur :
-// français si l'une des langues préférées est le français, anglais sinon.
+// la première langue préférée qui est le français ou l'anglais l'emporte, anglais par défaut.
 (function (K) {
   'use strict';
 
   const prefs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || 'en'];
-  const lang = prefs.some(l => /^fr\b/i.test(l)) ? 'fr' : 'en';
+  const first = prefs.find(l => /^(fr|en)\b/i.test(l));
+  const lang = first && /^fr\b/i.test(first) ? 'fr' : 'en';
 
   const STRINGS = {
     fr: {
@@ -249,11 +250,13 @@
     },
   };
 
-  function t(key, params) {
-    const v = STRINGS[lang][key] ?? STRINGS.fr[key] ?? key;
+  // Texte dans une langue donnée (sert à reconnaître les exemples créés dans l'autre langue).
+  function tl(l, key, params) {
+    const v = STRINGS[l][key] ?? STRINGS.fr[key] ?? key;
     if (typeof v === 'function') return v(params);
     return params ? v.replace(/\{(\w+)\}/g, (m, k) => (k in params ? params[k] : m)) : v;
   }
+  const t = (key, params) => tl(lang, key, params);
 
   // Textes du HTML statique : data-i18n (contenu), data-i18n-aria (aria-label).
   function applyStatic(root) {
@@ -264,5 +267,5 @@
     for (const el of root.querySelectorAll('[data-i18n-aria]')) el.setAttribute('aria-label', t(el.dataset.i18nAria));
   }
 
-  K.i18n = { lang, t, applyStatic, STRINGS };
+  K.i18n = { lang, t, tl, applyStatic, STRINGS };
 })(self.Klik = self.Klik || {});
