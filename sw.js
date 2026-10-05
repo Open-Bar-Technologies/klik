@@ -10,6 +10,7 @@ const ASSETS = [
   'index.html',
   'version.js',
   'css/app.css',
+  'js/i18n.js',
   'js/store.js',
   'js/engine.js',
   'js/app.js',

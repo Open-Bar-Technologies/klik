@@ -3,6 +3,8 @@
   'use strict';
 
   const S = K.store;
+  const t = K.i18n.t;
+  const q = text => t('quoted', { text });
   const E = K.engine;
   const VERSION = self.KLIK_VERSION || 'dev';
 
@@ -44,7 +46,6 @@
     return el;
   }
   const persist = () => S.save(data);
-  const plural = (n, one, many) => `${n} ${n > 1 ? many : one}`;
   const concertById = id => data.concerts.find(c => c.id === id) || null;
   const currentConcert = () => concertById(cur.concertId);
   const currentSong = () => {
@@ -76,7 +77,7 @@
       'aria-pressed': String(!custom && p.label === cur.signature.label),
       onclick: () => setSignature(p),
     }, p.label));
-    if (custom) chips.push(h('span', { class: 'chip', 'aria-pressed': 'true', title: 'Signature importée' }, cur.signature.label));
+    if (custom) chips.push(h('span', { class: 'chip', 'aria-pressed': 'true', title: t('importedSignature') }, cur.signature.label));
     ui.sigs.replaceChildren(...chips);
   }
 
@@ -88,7 +89,7 @@
       style: `--a:${(i / steps) * 360}deg`,
       'data-i': i,
       'data-lvl': i === 0 ? 'down' : levels[i],
-      'aria-label': i === 0 ? 'Temps 1' : `Point ${i + 1}`,
+      'aria-label': i === 0 ? t('beatOne') : t('step', { n: i + 1 }),
       disabled: i === 0,
     }, h('span', { class: 'dot' }))));
   }
@@ -97,12 +98,12 @@
 
   function renderMute() {
     ui.mute.textContent = data.muted ? '🔇' : '🔊';
-    ui.mute.setAttribute('aria-label', data.muted ? 'Activer le son' : 'Couper le son');
+    ui.mute.setAttribute('aria-label', data.muted ? t('soundOn') : t('soundOff'));
   }
 
   function renderPlay() {
     ui.play.classList.toggle('is-playing', playing);
-    ui.play.setAttribute('aria-label', playing ? 'Arrêter' : 'Lancer');
+    ui.play.setAttribute('aria-label', playing ? t('stop') : t('start'));
   }
 
   function renderSong() {
@@ -110,10 +111,23 @@
     const s = currentSong();
     ui.title.replaceChildren(s
       ? h('span', { class: 'title-text' }, s.name)
-      : h('span', { class: 'title-text muted' }, c ? 'Réglage libre' : 'Aucun concert'));
-    if (s && cur.dirty) ui.title.append(h('span', { class: 'dirty', title: 'Modifié depuis la liste' }, '•'));
+      : h('span', { class: 'title-text muted' }, c ? t('freeSetting') : t('noConcert')));
+    if (s && cur.dirty) ui.title.append(h('span', { class: 'dirty', title: t('modified') }, '•'));
+    fitTitle();
     ui.prev.disabled = !c || !c.songs.length;
     ui.next.disabled = !c || !c.songs.length;
+  }
+
+  // Titre à côté du cercle (paysage) : on réduit la police jusqu'à ce que le mot le plus long tienne.
+  function fitTitle() {
+    const el = ui.title.querySelector('.title-text');
+    ui.title.style.fontSize = '';
+    if (!el || !ui.center.classList.contains('side-title')) return;
+    let size = parseFloat(getComputedStyle(ui.title).fontSize);
+    while (el.scrollWidth > el.clientWidth && size > 12) {
+      size -= 1;
+      ui.title.style.fontSize = size + 'px';
+    }
   }
 
   function renderAll() {
@@ -193,7 +207,7 @@
   });
 
   async function start() {
-    try { await E.start(engineState); } catch (e) { toast('Le son ne peut pas démarrer sur cet appareil.'); return; }
+    try { await E.start(engineState); } catch (e) { toast(t('audioFailed')); return; }
     playing = true;
     readColors();
     renderPlay();
@@ -358,21 +372,21 @@
   function renderConcertsView() {
     libView = { name: 'concerts', concertId: null };
     ui.libBack.hidden = true;
-    ui.libTitle.textContent = 'Concerts';
+    ui.libTitle.textContent = t('concerts');
     const rows = data.concerts.map(c => h('li', { class: 'row' + (c.id === cur.concertId ? ' is-current' : '') },
       h('button', {
         type: 'button', class: 'row-main',
         onclick: () => { libView = { name: 'concert', concertId: c.id }; renderLib(); },
-      }, h('span', { class: 'row-name' }, c.name), h('span', { class: 'row-meta' }, plural(c.songs.length, 'morceau', 'morceaux'))),
-      h('button', { type: 'button', class: 'row-more', 'aria-label': `Actions pour ${c.name}`, onclick: () => concertActions(c) }, '⋯'),
+      }, h('span', { class: 'row-name' }, c.name), h('span', { class: 'row-meta' }, t('songCount', c.songs.length))),
+      h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: c.name }), onclick: () => concertActions(c) }, '⋯'),
     ));
     ui.libBody.replaceChildren(
-      rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, 'Aucun concert pour l’instant. Crée le premier avec « Nouveau concert ».'),
+      rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('noConcerts')),
       h('p', { class: 'version' }, `Klik ${VERSION}`),
     );
     ui.libFoot.replaceChildren(
-      footButton('Nouveau concert', newConcert, 'primary'),
-      footButton('Coller', pasteFlow),
+      footButton(t('newConcert'), newConcert, 'primary'),
+      footButton(t('paste'), pasteFlow),
     );
   }
 
@@ -387,17 +401,17 @@
       },
       h('span', { class: 'row-name' }, h('span', { class: 'row-num' }, i + 1), s.name),
       h('span', { class: 'row-meta' }, [`${s.tempo} BPM`, s.signature.label, s.duration].filter(Boolean).join(' · '))),
-      h('button', { type: 'button', class: 'row-more', 'aria-label': `Actions pour ${s.name}`, onclick: () => songActions(c, s) }, '⋯'),
+      h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: s.name }), onclick: () => songActions(c, s) }, '⋯'),
     ));
     ui.libBody.replaceChildren(
       h('button', { type: 'button', class: 'save-current', onclick: () => saveCurrentForm(c) },
-        h('strong', {}, '+ Enregistrer le réglage actuel'),
+        h('strong', {}, t('saveCurrent')),
         h('span', {}, `${cur.tempo} BPM · ${cur.signature.label} · ${cur.pattern}`)),
-      rows.length ? h('ul', { class: 'rows', id: 'songRows' }, rows) : h('p', { class: 'empty' }, 'Ce concert est vide. Règle un tempo et un motif, puis enregistre-le ici.'),
+      rows.length ? h('ul', { class: 'rows', id: 'songRows' }, rows) : h('p', { class: 'empty' }, t('emptyConcert')),
     );
     ui.libFoot.replaceChildren(
-      footButton('Copier le concert', () => copyJson(S.exportConcert(c))),
-      footButton('Coller', pasteFlow),
+      footButton(t('copyConcert'), () => copyJson(S.exportConcert(c))),
+      footButton(t('paste'), pasteFlow),
     );
   }
 
@@ -461,7 +475,7 @@
   ui.sheet.addEventListener('click', e => { if (e.target === ui.sheet) closeSheet(); });
 
   function menu(title, items) {
-    openSheet(title, null, [...items, { label: 'Annuler', run: closeSheet }]);
+    openSheet(title, null, [...items, { label: t('cancel'), run: closeSheet }]);
   }
 
   function form(title, fields, submitLabel, onSubmit) {
@@ -473,7 +487,7 @@
           min: fd.min, max: fd.max, inputmode: fd.inputmode, placeholder: fd.placeholder, autocomplete: 'off',
         }))),
       h('p', { class: 'form-error', role: 'alert' }));
-    const panel = openSheet(title, f, [{ label: submitLabel, kind: 'primary', submit: true }, { label: 'Annuler', run: closeSheet }]);
+    const panel = openSheet(title, f, [{ label: submitLabel, kind: 'primary', submit: true }, { label: t('cancel'), run: closeSheet }]);
     // Le bouton « valider » est dans les actions : on les déplace dans le formulaire.
     f.append(panel.querySelector('.sheet-actions'));
     f.addEventListener('submit', ev => {
@@ -486,17 +500,17 @@
   }
 
   function confirmDelete(what, run) {
-    openSheet(`Supprimer ${what} ?`, h('p', { class: 'sheet-text' }, 'Cette action est définitive. Copie le JSON avant si tu veux le garder.'), [
-      { label: 'Supprimer', kind: 'danger', run: () => { run(); closeSheet(); } },
-      { label: 'Annuler', run: closeSheet },
+    openSheet(t('deleteTitle', { what }), h('p', { class: 'sheet-text' }, t('deleteWarning')), [
+      { label: t('delete'), kind: 'danger', run: () => { run(); closeSheet(); } },
+      { label: t('cancel'), run: closeSheet },
     ]);
   }
 
   /* ----- concerts ----- */
 
   function newConcert() {
-    form('Nouveau concert', [{ id: 'concertName', label: 'Nom', placeholder: 'Ex. Fête de la musique' }], 'Créer', v => {
-      if (!v.concertName) return 'Donne un nom au concert.';
+    form(t('newConcert'), [{ id: 'concertName', label: t('name'), placeholder: t('concertPlaceholder') }], t('create'), v => {
+      if (!v.concertName) return t('concertNameMissing');
       const c = { id: S.uid(), name: v.concertName.slice(0, 80), songs: [] };
       data.concerts.push(c);
       persist();
@@ -508,13 +522,13 @@
 
   function concertActions(c) {
     menu(c.name, [
-      { label: 'Renommer', run: () => form('Renommer le concert', [{ id: 'concertName', label: 'Nom', value: c.name }], 'Renommer', v => {
-        if (!v.concertName) return 'Le nom ne peut pas être vide.';
+      { label: t('rename'), run: () => form(t('renameConcert'), [{ id: 'concertName', label: t('name'), value: c.name }], t('rename'), v => {
+        if (!v.concertName) return t('nameEmpty');
         c.name = v.concertName.slice(0, 80);
         persist(); closeSheet(); renderLib();
       }) },
-      { label: 'Copier le JSON', run: () => { closeSheet(); copyJson(S.exportConcert(c)); } },
-      { label: 'Supprimer', kind: 'danger', run: () => confirmDelete(`« ${c.name} »`, () => {
+      { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportConcert(c)); } },
+      { label: t('delete'), kind: 'danger', run: () => confirmDelete(q(c.name), () => {
         data.concerts = data.concerts.filter(x => x !== c);
         if (cur.concertId === c.id) { cur.concertId = null; cur.songId = null; cur.dirty = false; renderSong(); }
         persist(); renderLib();
@@ -526,16 +540,16 @@
 
   function tempoError(v) {
     const t = Number(v);
-    if (!Number.isFinite(t) || t < S.MIN_TEMPO || t > S.MAX_TEMPO) return `Le tempo doit être entre ${S.MIN_TEMPO} et ${S.MAX_TEMPO}.`;
+    if (!Number.isFinite(t) || t < S.MIN_TEMPO || t > S.MAX_TEMPO) return t('tempoRange', { min: S.MIN_TEMPO, max: S.MAX_TEMPO });
     return null;
   }
 
   function saveCurrentForm(c) {
-    form('Enregistrer le réglage', [
-      { id: 'songName', label: 'Nom du morceau', placeholder: 'Ex. Sweet Home Chicago' },
-      { id: 'songTempo', label: 'Tempo (BPM)', type: 'number', inputmode: 'numeric', value: cur.tempo, min: S.MIN_TEMPO, max: S.MAX_TEMPO },
-    ], 'Enregistrer', v => {
-      if (!v.songName) return 'Donne un nom au morceau.';
+    form(t('saveSetting'), [
+      { id: 'songName', label: t('songName'), placeholder: t('songPlaceholder') },
+      { id: 'songTempo', label: t('tempoField'), type: 'number', inputmode: 'numeric', value: cur.tempo, min: S.MIN_TEMPO, max: S.MAX_TEMPO },
+    ], t('save'), v => {
+      if (!v.songName) return t('songNameMissing');
       const err = tempoError(v.songTempo);
       if (err) return err;
       const s = S.normSong({ name: v.songName, tempo: Number(v.songTempo), signature: cur.signature, pattern: cur.pattern });
@@ -543,17 +557,17 @@
       loadSong(c, s);
       closeSheet();
       renderLib();
-      toast(`« ${s.name} » ajouté à ${c.name}`);
+      toast(t('songAdded', { song: s.name, concert: c.name }));
     });
   }
 
   function songActions(c, s) {
     menu(s.name, [
-      { label: 'Modifier le nom et le tempo', run: () => form('Modifier le morceau', [
-        { id: 'songName', label: 'Nom du morceau', value: s.name },
-        { id: 'songTempo', label: 'Tempo (BPM)', type: 'number', inputmode: 'numeric', value: s.tempo, min: S.MIN_TEMPO, max: S.MAX_TEMPO },
-      ], 'Enregistrer', v => {
-        if (!v.songName) return 'Le nom ne peut pas être vide.';
+      { label: t('editSongAction'), run: () => form(t('editSong'), [
+        { id: 'songName', label: t('songName'), value: s.name },
+        { id: 'songTempo', label: t('tempoField'), type: 'number', inputmode: 'numeric', value: s.tempo, min: S.MIN_TEMPO, max: S.MAX_TEMPO },
+      ], t('save'), v => {
+        if (!v.songName) return t('nameEmpty');
         const err = tempoError(v.songTempo);
         if (err) return err;
         s.name = v.songName.slice(0, 80);
@@ -561,17 +575,17 @@
         if (cur.songId === s.id) loadSong(c, s);
         persist(); closeSheet(); renderLib();
       }) },
-      { label: 'Remplacer par le réglage actuel', run: () => {
+      { label: t('replaceWithCurrent'), run: () => {
         s.tempo = cur.tempo;
         s.signature = { ...cur.signature };
         s.pattern = cur.pattern;
         if (cur.songId === s.id) { cur.dirty = false; renderSong(); }
         persist(); closeSheet(); renderLib();
-        toast(`« ${s.name} » mis à jour`);
+        toast(t('songUpdated', { song: s.name }));
       } },
-      { label: 'Copier vers un concert…', run: () => copyToConcert(s) },
-      { label: 'Copier le JSON', run: () => { closeSheet(); copyJson(S.exportSong(s)); } },
-      { label: 'Supprimer', kind: 'danger', run: () => confirmDelete(`« ${s.name} »`, () => {
+      { label: t('copyToConcert'), run: () => copyToConcert(s) },
+      { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportSong(s)); } },
+      { label: t('delete'), kind: 'danger', run: () => confirmDelete(q(s.name), () => {
         c.songs = c.songs.filter(x => x !== s);
         if (cur.songId === s.id) { cur.songId = null; cur.dirty = false; renderSong(); }
         persist(); renderLib();
@@ -580,12 +594,12 @@
   }
 
   function copyToConcert(s) {
-    menu('Copier vers…', data.concerts.map(target => ({
+    menu(t('copyTo'), data.concerts.map(target => ({
       label: target.name,
       run: () => {
         target.songs.push({ ...S.normSong(S.exportSong(s, false)) });
         persist(); closeSheet(); renderLib();
-        toast(`Copie ajoutée à ${target.name}`);
+        toast(t('copyAdded', { concert: target.name }));
       },
     })));
   }
@@ -596,11 +610,11 @@
     const text = S.stringify(obj);
     try {
       await navigator.clipboard.writeText(text);
-      toast('JSON copié dans le presse-papier');
+      toast(t('jsonCopied'));
     } catch (e) {
       const ta = h('textarea', { class: 'json', id: 'jsonOut', readonly: true, rows: 10 });
       ta.value = text;
-      openSheet('Copier le JSON', ta, [{ label: 'Fermer', run: closeSheet }]);
+      openSheet(t('copyJson'), ta, [{ label: t('close'), run: closeSheet }]);
       setTimeout(() => { ta.focus(); ta.select(); }, 50);
     }
   }
@@ -610,13 +624,13 @@
     if (r.type === 'concert') {
       data.concerts.push(r.concert);
       libView = { name: 'concert', concertId: r.concert.id };
-      toast(`Concert « ${r.concert.name} » importé`);
+      toast(t('concertImported', { name: r.concert.name }));
     } else {
       const target = (libView.name === 'concert' && concertById(libView.concertId)) || currentConcert();
-      if (!target) throw new S.FormatError('Ouvre d’abord un concert pour y coller ce morceau.');
+      if (!target) throw new S.FormatError(t('openConcertFirst'));
       target.songs.push(r.song);
       libView = { name: 'concert', concertId: target.id };
-      toast(`« ${r.song.name} » ajouté à ${target.name}`);
+      toast(t('songAdded', { song: r.song.name, concert: target.name }));
     }
     persist();
     renderLib();
@@ -632,14 +646,14 @@
   }
 
   function openPasteSheet(text, error) {
-    const ta = h('textarea', { class: 'json', id: 'jsonIn', rows: 10, placeholder: 'Appui long ici, puis « Coller »', spellcheck: 'false' });
+    const ta = h('textarea', { class: 'json', id: 'jsonIn', rows: 10, placeholder: t('pastePlaceholder'), spellcheck: 'false' });
     ta.value = text;
     const err = h('p', { class: 'form-error', role: 'alert' }, error || '');
-    openSheet('Coller un morceau ou un concert', h('div', {}, ta, err), [
-      { label: 'Importer', kind: 'primary', run: () => {
+    openSheet(t('pasteTitle'), h('div', {}, ta, err), [
+      { label: t('import'), kind: 'primary', run: () => {
         try { applyImport(ta.value); closeSheet(); } catch (e) { err.textContent = e.message; }
       } },
-      { label: 'Annuler', run: closeSheet },
+      { label: t('cancel'), run: closeSheet },
     ]);
     setTimeout(() => ta.focus(), 50);
   }
@@ -717,8 +731,10 @@
     ui.center.classList.toggle('side-title', side);
     const size = side ? full : Math.min(r.width, r.height - ui.song.offsetHeight - 8);
     ui.center.style.setProperty('--ring', `${Math.floor(Math.max(180, Math.min(size, 720)))}px`);
+    fitTitle();
   }).observe(ui.center);
 
+  K.i18n.applyStatic(document);
   readColors();
   renderAll();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});

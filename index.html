@@ -21,25 +21,25 @@
 </head>
 <body>
   <main class="app">
-    <nav class="top" aria-label="Signature et concerts">
+    <nav class="top" aria-label="Signature et concerts" data-i18n-aria="navLabel">
       <div class="sigs" id="sigs"></div>
-      <button class="square" id="openLibrary" type="button" aria-label="Concerts et morceaux">
+      <button class="square" id="openLibrary" type="button" aria-label="Concerts et morceaux" data-i18n-aria="openLibrary">
         <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" fill="none"/></svg>
       </button>
     </nav>
 
     <section class="center" id="center">
       <div class="song" id="song">
-        <button class="nav" id="prev" type="button" aria-label="Morceau précédent">‹</button>
-        <button class="title" id="songTitle" type="button" aria-label="Ouvrir la liste des morceaux"></button>
-        <button class="nav" id="next" type="button" aria-label="Morceau suivant">›</button>
+        <button class="nav" id="prev" type="button" aria-label="Morceau précédent" data-i18n-aria="prevSong">‹</button>
+        <button class="title" id="songTitle" type="button" aria-label="Ouvrir la liste des morceaux" data-i18n-aria="openSongList"></button>
+        <button class="nav" id="next" type="button" aria-label="Morceau suivant" data-i18n-aria="nextSong">›</button>
       </div>
       <div class="ring" id="ring">
         <div class="points" id="points"></div>
         <div class="disc" id="disc">
           <button class="mute" id="mute" type="button">🔊</button>
-          <button class="bpm" id="bpm" type="button" aria-label="Tempo. Toucher pour lancer ou arrêter, toucher deux fois pour saisir.">120</button>
-          <input class="bpm-input" id="bpmInput" type="number" inputmode="numeric" min="30" max="300" aria-label="Saisir le tempo" hidden>
+          <button class="bpm" id="bpm" type="button" aria-label="Tempo. Toucher pour lancer ou arrêter, toucher deux fois pour saisir." data-i18n-aria="tempoButton">120</button>
+          <input class="bpm-input" id="bpmInput" type="number" inputmode="numeric" min="30" max="300" aria-label="Saisir le tempo" data-i18n-aria="tempoInput" hidden>
           <button class="play" id="play" type="button" aria-label="Lancer"><span class="play-icon" aria-hidden="true"></span></button>
         </div>
       </div>
@@ -49,7 +49,7 @@
       <div class="track" id="track" aria-hidden="true">
         <span class="mark">«</span><span class="mark">‹</span><span class="gap"></span><span class="mark">›</span><span class="mark">»</span>
       </div>
-      <button class="knob" id="tap" type="button" aria-label="Tap tempo. Maintenir et glisser pour changer le tempo.">
+      <button class="knob" id="tap" type="button" aria-label="Tap tempo. Maintenir et glisser pour changer le tempo." data-i18n-aria="tapKnob">
         <span>TAP</span>
         <span class="tap-dots" id="tapDots"><i></i><i></i><i></i><i></i></span>
       </button>
@@ -58,9 +58,9 @@
 
   <section class="lib" id="lib" hidden>
     <header class="lib-head">
-      <button class="lib-icon" id="libBack" type="button" aria-label="Retour aux concerts" hidden>‹</button>
-      <h1 id="libTitle">Concerts</h1>
-      <button class="lib-icon" id="libClose" type="button" aria-label="Fermer">✕</button>
+      <button class="lib-icon" id="libBack" type="button" aria-label="Retour aux concerts" data-i18n-aria="backToConcerts" hidden>‹</button>
+      <h1 id="libTitle" data-i18n="concerts">Concerts</h1>
+      <button class="lib-icon" id="libClose" type="button" aria-label="Fermer" data-i18n-aria="close">✕</button>
     </header>
     <div class="lib-body" id="libBody"></div>
     <footer class="lib-foot" id="libFoot"></footer>
@@ -68,9 +68,10 @@
 
   <div class="sheet" id="sheet" hidden></div>
   <div class="toast" id="toast" role="status" hidden></div>
-  <button class="update" id="update" type="button" hidden>Nouvelle version disponible · Mettre à jour</button>
+  <button class="update" id="update" type="button" data-i18n="updateAvailable" hidden>Nouvelle version disponible · Mettre à jour</button>
 
   <script src="version.js"></script>
+  <script src="js/i18n.js"></script>
   <script src="js/store.js"></script>
   <script src="js/engine.js"></script>
   <script src="js/app.js"></script>

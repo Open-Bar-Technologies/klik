@@ -121,16 +121,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .song {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   width: 100%;
   max-width: 520px;
 }
 .nav {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   flex: none;
   border: 0;
-  background: none;
+  border-radius: 12px;
+  background: var(--surface-1);
   font-size: 34px;
   line-height: 1;
 }
@@ -138,9 +139,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .title {
   flex: 1;
   min-width: 0;
-  height: 44px;
+  height: 48px;
+  padding: 0 12px;
   border: 0;
-  background: none;
+  border-radius: 12px;
+  background: var(--surface-1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -182,8 +185,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   display: grid;
   place-items: center;
 }
-.mute { top: 5%; font-size: max(22px, calc(var(--ring) * .065)); line-height: 1; }
-.play { bottom: 5%; }
+.mute { top: 15%; transform: translateY(-50%); font-size: max(22px, calc(var(--ring) * .065)); line-height: 1; }
+.play { bottom: 15%; transform: translateY(50%); }
 .bpm, .bpm-input {
   font-family: var(--font-display);
   font-weight: 900;
@@ -342,12 +345,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     grid-template-columns: 1fr 1fr;
     grid-template-areas: "title title" "prev next";
     align-content: center;
-    row-gap: 4px;
+    gap: 8px;
   }
-  .center.side-title .title { grid-area: title; height: auto; min-height: 44px; font-size: 22px; }
-  .center.side-title .title-text { white-space: normal; text-align: center; overflow-wrap: anywhere; }
-  .center.side-title #prev { grid-area: prev; justify-self: center; }
-  .center.side-title #next { grid-area: next; justify-self: center; }
+  .center.side-title .title { grid-area: title; height: auto; min-height: 48px; padding: 10px 12px; font-size: 20px; }
+  .center.side-title .title-text { white-space: normal; text-align: center; overflow-wrap: normal; }
+  .center.side-title #prev { grid-area: prev; justify-self: end; }
+  .center.side-title #next { grid-area: next; justify-self: start; }
   .slider { height: auto; width: 76px; }
   .track { flex-direction: column-reverse; padding: 22px 0; }
   .mark { transform: rotate(-90deg); }

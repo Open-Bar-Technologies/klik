@@ -2,6 +2,8 @@
 (function (K) {
   'use strict';
 
+  const t = K.i18n.t;
+
   const KEY = 'klik.data';
   const SCHEMA = 3;   // version du stockage local (migrations ci-dessous)
   const FORMAT = 2;   // version du JSON d'échange (champ "klik")
@@ -53,43 +55,43 @@
   function normSignature(raw) {
     if (typeof raw === 'string') {
       const p = presetFor(raw.trim());
-      if (!p) fail(`Signature inconnue « ${raw} ». Utilise 2/4, 3/4, 4/4, 6/8 ou un objet { label, steps, stepsPerBeat }.`);
+      if (!p) fail(t('errUnknownSignature', { sig: raw }));
       return { ...p };
     }
-    if (!raw || typeof raw !== 'object') fail('Signature manquante.');
+    if (!raw || typeof raw !== 'object') fail(t('errSignatureMissing'));
     const steps = Number(raw.steps);
     const spb = Number(raw.stepsPerBeat);
-    if (!Number.isInteger(steps) || steps < 2 || steps > 32) fail('« steps » doit être un entier entre 2 et 32.');
-    if (!Number.isInteger(spb) || spb < 1 || spb > steps) fail('« stepsPerBeat » doit être un entier entre 1 et « steps ».');
+    if (!Number.isInteger(steps) || steps < 2 || steps > 32) fail(t('errSteps'));
+    if (!Number.isInteger(spb) || spb < 1 || spb > steps) fail(t('errStepsPerBeat'));
     return { label: String(raw.label || `${steps}`).slice(0, 8), steps, stepsPerBeat: spb };
   }
 
   function normPattern(raw, sig) {
     if (raw == null) return defaultPattern(sig);
-    if (typeof raw !== 'string' || !/^[Xx.]+$/.test(raw)) fail('« pattern » doit être une suite de X, x et . (par exemple "X.x.X.x.").');
-    if (raw.length !== sig.steps) fail(`« pattern » doit faire ${sig.steps} caractères en ${sig.label} (il en fait ${raw.length}).`);
+    if (typeof raw !== 'string' || !/^[Xx.]+$/.test(raw)) fail(t('errPatternChars'));
+    if (raw.length !== sig.steps) fail(t('errPatternLength', { steps: sig.steps, label: sig.label, length: raw.length }));
     return 'X' + raw.slice(1);
   }
 
   function normSong(raw, keepId) {
-    if (!raw || typeof raw !== 'object') fail('Morceau invalide.');
+    if (!raw || typeof raw !== 'object') fail(t('errSong'));
     const tempo = Number(raw.tempo);
-    if (!Number.isFinite(tempo)) fail('« tempo » manquant ou invalide.');
+    if (!Number.isFinite(tempo)) fail(t('errTempo'));
     const signature = normSignature(raw.signature == null ? '4/4' : raw.signature);
     const song = {
       id: keepId && raw.id ? String(raw.id) : uid(),
-      name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || 'Sans titre',
+      name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || t('untitledSong'),
       tempo: clampTempo(tempo),
       signature,
       pattern: normPattern(raw.pattern, signature),
     };
     if (raw.countIn != null) {
       const n = Number(raw.countIn);
-      if (!Number.isInteger(n) || n < 0 || n > 8) fail('« countIn » doit être un nombre de mesures entre 0 et 8.');
+      if (!Number.isInteger(n) || n < 0 || n > 8) fail(t('errCountIn'));
       song.countIn = n;
     }
     if (raw.duration != null && raw.duration !== '') {
-      if (typeof raw.duration !== 'string' || !/^\d{1,3}:[0-5]\d$/.test(raw.duration)) fail('« duration » doit être au format "m:ss" (par exemple "3:45").');
+      if (typeof raw.duration !== 'string' || !/^\d{1,3}:[0-5]\d$/.test(raw.duration)) fail(t('errDuration'));
       song.duration = raw.duration;
     }
     if (typeof raw.notes === 'string' && raw.notes.trim()) song.notes = raw.notes.trim().slice(0, 500);
@@ -97,14 +99,14 @@
   }
 
   function normConcert(raw, keepId) {
-    if (!raw || typeof raw !== 'object') fail('Concert invalide.');
-    if (!Array.isArray(raw.songs)) fail('« songs » doit être une liste de morceaux.');
+    if (!raw || typeof raw !== 'object') fail(t('errConcert'));
+    if (!Array.isArray(raw.songs)) fail(t('errSongs'));
     return {
       id: keepId && raw.id ? String(raw.id) : uid(),
-      name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || 'Concert sans nom',
+      name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || t('untitledConcert'),
       songs: raw.songs.map((s, i) => {
         try { return normSong(s, keepId); } catch (e) {
-          if (e instanceof FormatError) fail(`Morceau n°${i + 1} : ${e.message}`);
+          if (e instanceof FormatError) fail(t('errSongN', { n: i + 1, message: e.message }));
           throw e;
         }
       }),
@@ -137,29 +139,29 @@
 
   function parse(text) {
     let obj;
-    try { obj = JSON.parse(String(text).trim()); } catch (e) { fail('Ce texte n’est pas du JSON valide.'); }
-    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) fail('Le JSON doit être un objet Klik.');
-    if (obj.klik == null) fail('Il manque le champ « klik » : ce JSON ne vient pas de Klik.');
-    if (Number(obj.klik) > FORMAT) fail('Ce JSON vient d’une version plus récente de Klik. Mets l’app à jour.');
+    try { obj = JSON.parse(String(text).trim()); } catch (e) { fail(t('errNotJson')); }
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) fail(t('errNotObject'));
+    if (obj.klik == null) fail(t('errNoKlik'));
+    if (Number(obj.klik) > FORMAT) fail(t('errNewer'));
     if (Number(obj.klik) === 1) {
       if (obj.type === 'song') upgradeOld44(obj);
       if (obj.type === 'concert' && Array.isArray(obj.songs)) obj.songs.forEach(upgradeOld44);
     }
     if (obj.type === 'song') return { type: 'song', song: normSong(obj) };
     if (obj.type === 'concert') return { type: 'concert', concert: normConcert(obj) };
-    fail('« type » doit valoir "song" ou "concert".');
+    fail(t('errType'));
   }
 
   /* ---------- stockage local ---------- */
 
   function demoConcert() {
     return normConcert({
-      name: 'Démo · exemples de motifs',
+      name: t('demoConcert'),
       songs: [
-        { name: 'Rock droit', tempo: 120, signature: '4/4', pattern: 'X.x.X.x.X.x.X.x.' },
+        { name: t('demoRock'), tempo: 120, signature: '4/4', pattern: 'X.x.X.x.X.x.X.x.' },
         { name: 'Tresillo', tempo: 100, signature: '4/4', pattern: 'X.....X.....X...' },
-        { name: 'Valse', tempo: 168, signature: '3/4', pattern: 'X...X...X...' },
-        { name: 'Ballade 6/8', tempo: 52, signature: '6/8', pattern: 'X.x.x.X.x.x.' },
+        { name: t('demoWaltz'), tempo: 168, signature: '3/4', pattern: 'X...X...X...' },
+        { name: t('demoBallad'), tempo: 52, signature: '6/8', pattern: 'X.x.x.X.x.x.' },
         { name: 'Shuffle boogie', tempo: 112, signature: { label: '12/8', steps: 12, stepsPerBeat: 3 }, pattern: 'X.xX.xX.xX.x' },
       ],
     });
@@ -167,14 +169,14 @@
 
   // Les claves (2 mesures) sont écrites sur une mesure de 4/4 en doubles-croches :
   // même motif, tempo à la blanche de la version « 2 mesures ».
-  const LATIN_NAME = 'Rythmes latinos';
+  const LATIN_NAMES = [K.i18n.STRINGS.fr.latinConcert, K.i18n.STRINGS.en.latinConcert];
   function latinConcert() {
     return normConcert({
-      name: LATIN_NAME,
+      name: t('latinConcert'),
       songs: [
-        { name: 'Salsa · clave de son 3-2', tempo: 95, signature: '4/4', pattern: 'X..X..X...X.X...' },
-        { name: 'Rumba · clave rumba 3-2', tempo: 85, signature: '4/4', pattern: 'X..X...X..X.X...' },
-        { name: 'Samba · grosse caisse', tempo: 100, signature: '2/4', pattern: 'X..xX..x' },
+        { name: t('latinSalsa'), tempo: 95, signature: '4/4', pattern: 'X..X..X...X.X...' },
+        { name: t('latinRumba'), tempo: 85, signature: '4/4', pattern: 'X..X...X..X.X...' },
+        { name: t('latinSamba'), tempo: 100, signature: '2/4', pattern: 'X..xX..x' },
         { name: 'Cha-cha-cha', tempo: 120, signature: '4/4', pattern: 'X...X...X...X.x.' },
         { name: 'Bossa nova', tempo: 65, signature: '4/4', pattern: 'X..X..X...X..X..' },
       ],
@@ -204,7 +206,7 @@
       d.concerts = Array.isArray(d.concerts) ? d.concerts : [];
       d.concerts.forEach(c => (c.songs || []).forEach(up));
       up(d.current);
-      if (!d.concerts.some(c => c.name === LATIN_NAME)) d.concerts.push(latinConcert());
+      if (!d.concerts.some(c => LATIN_NAMES.includes(c.name))) d.concerts.push(latinConcert());
       d.schema = 2;
       return d;
     },

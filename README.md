@@ -2,6 +2,7 @@
 
 Tempo de référence pour le groupe avant chaque morceau, avec une setlist par concert.
 Klik est une PWA : elle s'installe sur l'écran d'accueil et fonctionne sans réseau.
+L'interface est en français ou en anglais selon la langue du navigateur.
 
 ## Utilisation
 
@@ -21,6 +22,7 @@ Klik est une PWA : elle s'installe sur l'écran d'accueil et fonctionne sans ré
 | ---------------------- | ---- |
 | `index.html`           | Structure de l'écran |
 | `css/app.css`          | Styles et variables du design system (`--surface-0`, `--text-primary`, `--border-strong`…) |
+| `js/i18n.js`           | Textes français et anglais (choix selon la langue du navigateur) |
 | `js/store.js`          | Format JSON, validation, stockage local, migrations |
 | `js/engine.js`         | Planification audio (Web Audio) |
 | `js/app.js`            | Interface |
