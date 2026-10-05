@@ -241,15 +241,30 @@
     requestAnimationFrame(frame);
   }
 
+  // Plus petit écart, en points, entre deux coups joués du motif (le temps 1 compte toujours).
+  function minGap() {
+    const steps = cur.signature.steps;
+    const on = [];
+    for (let i = 0; i < steps; i++) if (i === 0 || levels[i]) on.push(i);
+    let gap = steps;
+    for (let k = 0; k < on.length; k++) {
+      const d = ((on[(k + 1) % on.length] - on[k]) + steps) % steps || steps;
+      if (d < gap) gap = d;
+    }
+    return gap;
+  }
+
   function hit({ step, lvl }) {
     if (!lvl) return;
-    const stepMs = 60000 / cur.tempo / cur.signature.stepsPerBeat;
-    const dur = Math.max(80, Math.min(220, stepMs * 0.9));
+    // Le flash dure presque jusqu'au coup suivant le plus proche : un motif aéré (les seuls
+    // temps à 60 BPM) garde un flash bien visible, un motif serré ne fait pas se chevaucher les flashs.
+    const gapMs = minGap() * 60000 / cur.tempo / cur.signature.stepsPerBeat;
+    const dur = Math.max(80, Math.min(600, gapMs * 0.85));
     if (lvl === 3) {
       ui.disc.animate([
         { background: colors.accent, color: colors['accent-ink'], borderColor: colors.accent },
         { background: 'rgba(0,0,0,0)', color: colors['text-primary'], borderColor: colors['border-strong'] },
-      ], { duration: Math.min(300, dur * 1.6), easing: 'cubic-bezier(.2,.7,.3,1)' });
+      ], { duration: Math.min(dur * 1.6, Math.max(dur, 300)), easing: 'cubic-bezier(.2,.7,.3,1)' });
       return;
     }
     const ring = lvl === 2
