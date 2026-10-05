@@ -4,7 +4,7 @@
 // l'active avec le bandeau « Mettre à jour ».
 //
 // SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
-const VERSION = '0.13.0';
+const VERSION = '0.13.1';
 
 const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';
@@ -51,9 +51,16 @@ const ASSETS = [
   'guide/en-12.webp',
 ];
 
+// Chaque fichier est téléchargé avec ?v=VERSION : un cache intermédiaire (Cloudflare, proxy) qui
+// garderait l'ancienne version ne peut pas la glisser dans la nouvelle. Il est rangé sous son
+// adresse normale, que l'app demande.
 self.addEventListener('install', event => {
   event.waitUntil(
-    caches.open(CACHE).then(cache => cache.addAll(ASSETS.map(url => new Request(url, { cache: 'reload' }))))
+    caches.open(CACHE).then(cache => Promise.all(ASSETS.map(async url => {
+      const res = await fetch(new Request(url + (url.includes('?') ? '&' : '?') + 'v=' + VERSION, { cache: 'reload' }));
+      if (!res.ok) throw new Error(`${url} : ${res.status}`);
+      await cache.put(url, res);
+    })))
   );
 });
 

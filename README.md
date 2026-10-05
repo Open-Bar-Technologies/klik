@@ -45,6 +45,18 @@ Guide illustré, imprimable, en français et en anglais : [guide.html](guide.htm
 - `icons/og.png` (1200×630) est l'image d'aperçu affichée quand on colle l'adresse de Klik dans une messagerie.
 - Les balises d'aperçu de `index.html` (`og:image`, `og:url`, `canonical`) pointent vers `https://klik.lonoize.com/`. Si le site change d'adresse, il faut les modifier.
 
+## Cache devant le site (Cloudflare, proxy)
+
+Un cache intermédiaire qui garde `sw.js` empêche les téléphones de voir les nouvelles versions :
+Cloudflare met en cache les `.js`, `.css` et les images (pas le HTML), pendant 2 h par défaut quand le serveur
+n'envoie pas d'en-tête `Cache-Control`. Il faut donc :
+
+- soit une règle de cache Cloudflare « Bypass cache » pour `sw.js` (ou pour tout le site, qui est petit) ;
+- soit que le serveur envoie `Cache-Control: no-cache` pour `sw.js` (Cloudflare ne le met alors plus en cache) ;
+- à défaut, « Purge Everything » dans Cloudflare après chaque déploiement.
+
+Les autres fichiers sont téléchargés par le service worker avec `?v=VERSION`, donc toujours à jour.
+
 ## Déploiement sur GitHub Pages
 
 Dans **Settings → Pages**, choisir **Deploy from a branch**, branche `main`, dossier `/ (root)`.
