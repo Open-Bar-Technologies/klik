@@ -3,8 +3,8 @@
   'use strict';
 
   const KEY = 'klik.data';
-  const SCHEMA = 1;   // version du stockage local (migrations ci-dessous)
-  const FORMAT = 1;   // version du JSON d'échange (champ "klik")
+  const SCHEMA = 2;   // version du stockage local (migrations ci-dessous)
+  const FORMAT = 2;   // version du JSON d'échange (champ "klik")
   const MIN_TEMPO = 30;
   const MAX_TEMPO = 300;
 
@@ -12,7 +12,7 @@
   const PRESETS = [
     { label: '2/4', steps: 8, stepsPerBeat: 4 },   // doubles-croches
     { label: '3/4', steps: 12, stepsPerBeat: 4 },  // doubles-croches
-    { label: '4/4', steps: 8, stepsPerBeat: 2 },   // croches
+    { label: '4/4', steps: 16, stepsPerBeat: 4 },  // doubles-croches
     { label: '6/8', steps: 12, stepsPerBeat: 6 },  // doubles-croches, BPM à la noire pointée
   ];
 
@@ -31,12 +31,14 @@
     return !!p && p.steps === sig.steps && p.stepsPerBeat === sig.stepsPerBeat;
   }
 
-  // Temps forts + croches, comme demandé à chaque changement de signature.
+  // Motif minimal : les temps de la mesure (2 en 2/4, 3 en 3/4, 4 en 4/4).
+  // En mesure composée (6/8), on compte les croches : 6, dont 2 temps forts.
   function defaultPattern(sig) {
-    const eighth = sig.stepsPerBeat >= 4 ? 2 : 1;
+    const spb = sig.stepsPerBeat;
+    const pulse = spb > 3 && spb % 3 === 0 ? spb / 3 : spb;
     let s = '';
     for (let i = 0; i < sig.steps; i++) {
-      s += i % sig.stepsPerBeat === 0 ? 'X' : (i % eighth === 0 ? 'x' : '.');
+      s += i % spb === 0 ? 'X' : (i % pulse === 0 ? 'x' : '.');
     }
     return s;
   }
@@ -123,12 +125,26 @@
   const exportConcert = c => ({ klik: FORMAT, type: 'concert', name: c.name, songs: c.songs.map(s => exportSong(s, false)) });
   const stringify = obj => JSON.stringify(obj, null, 2);
 
+  // Format 1 : « 4/4 » valait 8 croches. On double la résolution (1 croche = 2 doubles-croches).
+  function upgradeOld44(song) {
+    if (!song || typeof song !== 'object') return;
+    const sig = song.signature;
+    const old = sig === '4/4' || (sig && sig.label === '4/4' && sig.steps === 8 && sig.stepsPerBeat === 2);
+    if (!old || typeof song.pattern !== 'string' || song.pattern.length !== 8) return;
+    song.signature = sig === '4/4' ? '4/4' : { label: '4/4', steps: 16, stepsPerBeat: 4 };
+    song.pattern = [...song.pattern].map(c => c + '.').join('');
+  }
+
   function parse(text) {
     let obj;
     try { obj = JSON.parse(String(text).trim()); } catch (e) { fail('Ce texte n’est pas du JSON valide.'); }
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) fail('Le JSON doit être un objet Klik.');
     if (obj.klik == null) fail('Il manque le champ « klik » : ce JSON ne vient pas de Klik.');
     if (Number(obj.klik) > FORMAT) fail('Ce JSON vient d’une version plus récente de Klik. Mets l’app à jour.');
+    if (Number(obj.klik) === 1) {
+      if (obj.type === 'song') upgradeOld44(obj);
+      if (obj.type === 'concert' && Array.isArray(obj.songs)) obj.songs.forEach(upgradeOld44);
+    }
     if (obj.type === 'song') return { type: 'song', song: normSong(obj) };
     if (obj.type === 'concert') return { type: 'concert', concert: normConcert(obj) };
     fail('« type » doit valoir "song" ou "concert".');
@@ -140,11 +156,27 @@
     return normConcert({
       name: 'Démo · exemples de motifs',
       songs: [
-        { name: 'Rock droit', tempo: 120, signature: '4/4', pattern: 'XxXxXxXx' },
-        { name: 'Tresillo', tempo: 100, signature: '4/4', pattern: 'X..X..X.' },
+        { name: 'Rock droit', tempo: 120, signature: '4/4', pattern: 'X.x.X.x.X.x.X.x.' },
+        { name: 'Tresillo', tempo: 100, signature: '4/4', pattern: 'X.....X.....X...' },
         { name: 'Valse', tempo: 168, signature: '3/4', pattern: 'X...X...X...' },
         { name: 'Ballade 6/8', tempo: 52, signature: '6/8', pattern: 'X.x.x.X.x.x.' },
         { name: 'Shuffle boogie', tempo: 112, signature: { label: '12/8', steps: 12, stepsPerBeat: 3 }, pattern: 'X.xX.xX.xX.x' },
+      ],
+    });
+  }
+
+  // Clave sur 2 mesures de 4/4 en croches : 16 points, BPM à la noire.
+  const CLAVE = { label: 'clave', steps: 16, stepsPerBeat: 2 };
+  const LATIN_NAME = 'Rythmes latinos';
+  function latinConcert() {
+    return normConcert({
+      name: LATIN_NAME,
+      songs: [
+        { name: 'Salsa · clave de son 3-2', tempo: 190, signature: CLAVE, pattern: 'X..X..X...X.X...' },
+        { name: 'Rumba · clave rumba 3-2', tempo: 170, signature: CLAVE, pattern: 'X..X...X..X.X...' },
+        { name: 'Samba · grosse caisse', tempo: 100, signature: '2/4', pattern: 'X..xX..x' },
+        { name: 'Cha-cha-cha', tempo: 120, signature: '4/4', pattern: 'X...X...X...X.x.' },
+        { name: 'Bossa nova', tempo: 130, signature: CLAVE, pattern: 'X..X..X...X..X..' },
       ],
     });
   }
@@ -156,12 +188,27 @@
       schema: SCHEMA,
       muted: false,
       current: { tempo: s.tempo, signature: { ...s.signature }, pattern: s.pattern, concertId: c.id, songId: s.id, dirty: false },
-      concerts: [c],
+      concerts: [c, latinConcert()],
     };
   }
 
   // Une entrée par version de schéma : migrations[n] transforme le schéma n en n + 1.
-  const migrations = {};
+  const migrations = {
+    // 1 → 2 : le 4/4 passe de 8 croches à 16 doubles-croches ; ajout des rythmes latinos.
+    1: d => {
+      const up = s => {
+        if (!s || !s.signature || s.signature.label !== '4/4' || s.signature.steps !== 8 || s.signature.stepsPerBeat !== 2) return;
+        s.signature = { label: '4/4', steps: 16, stepsPerBeat: 4 };
+        if (typeof s.pattern === 'string' && s.pattern.length === 8) s.pattern = [...s.pattern].map(c => c + '.').join('');
+      };
+      d.concerts = Array.isArray(d.concerts) ? d.concerts : [];
+      d.concerts.forEach(c => (c.songs || []).forEach(up));
+      up(d.current);
+      if (!d.concerts.some(c => c.name === LATIN_NAME)) d.concerts.push(latinConcert());
+      d.schema = 2;
+      return d;
+    },
+  };
 
   function migrate(d) {
     while (d.schema < SCHEMA) {
