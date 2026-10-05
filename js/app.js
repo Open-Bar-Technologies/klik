@@ -399,8 +399,9 @@
         type: 'button', class: 'row-main',
         onclick: () => { loadSong(c, s); closeLibrary(); },
       },
+      s.section && s.section !== (c.songs[i - 1] || {}).section ? h('span', { class: 'row-section' }, s.section) : null,
       h('span', { class: 'row-name' }, h('span', { class: 'row-num' }, i + 1), s.name),
-      h('span', { class: 'row-meta' }, [`${s.tempo} BPM`, s.signature.label, s.duration].filter(Boolean).join(' · '))),
+      h('span', { class: 'row-meta' }, [`${s.tempo} BPM`, s.signature.label, s.duration, s.artist].filter(Boolean).join(' · '))),
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: s.name }), onclick: () => songActions(c, s) }, '⋯'),
     ));
     ui.libBody.replaceChildren(

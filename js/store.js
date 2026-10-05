@@ -52,11 +52,29 @@
   class FormatError extends Error {}
   function fail(msg) { throw new FormatError(msg); }
 
-  function normSignature(raw) {
+  // Signature écrite « N/D » hors des 4 prédéfinies (12/8, 5/4, 7/8…) : le nombre de temps
+  // vient de N (en mesure composée, N/3 temps), le nombre de points vient du motif.
+  function signatureFromText(label, steps) {
+    const m = /^(\d{1,2})\/(2|4|8|16)$/.exec(label);
+    if (!m) return null;
+    const n = Number(m[1]);
+    const d = Number(m[2]);
+    const compound = d === 8 && n > 3 && n % 3 === 0;
+    const beats = compound ? n / 3 : n;
+    if (steps == null) steps = beats * (compound ? 3 : d === 8 ? 2 : d === 16 ? 1 : 4);
+    if (steps % beats !== 0) fail(t('errSignatureSteps', { label, beats, length: steps }));
+    if (steps < 2 || steps > 32) fail(t('errSteps'));
+    return { label, steps, stepsPerBeat: steps / beats };
+  }
+
+  function normSignature(raw, pattern) {
     if (typeof raw === 'string') {
-      const p = presetFor(raw.trim());
-      if (!p) fail(t('errUnknownSignature', { sig: raw }));
-      return { ...p };
+      const label = raw.trim();
+      const p = presetFor(label);
+      if (p) return { ...p };
+      const sig = signatureFromText(label, typeof pattern === 'string' && pattern ? pattern.length : null);
+      if (!sig) fail(t('errUnknownSignature', { sig: raw }));
+      return sig;
     }
     if (!raw || typeof raw !== 'object') fail(t('errSignatureMissing'));
     const steps = Number(raw.steps);
@@ -88,7 +106,7 @@
     if (!raw || typeof raw !== 'object') fail(t('errSong'));
     const tempo = Number(raw.tempo);
     if (!Number.isFinite(tempo)) fail(t('errTempo'));
-    const signature = normSignature(raw.signature == null ? guessSignature(raw.pattern) : raw.signature);
+    const signature = normSignature(raw.signature == null ? guessSignature(raw.pattern) : raw.signature, raw.pattern);
     const song = {
       id: keepId && raw.id ? String(raw.id) : uid(),
       name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || t('untitledSong'),
@@ -101,12 +119,27 @@
       if (!Number.isInteger(n) || n < 0 || n > 8) fail(t('errCountIn'));
       song.countIn = n;
     }
-    if (raw.duration != null && raw.duration !== '') {
-      if (typeof raw.duration !== 'string' || !/^\d{1,3}:[0-5]\d$/.test(raw.duration)) fail(t('errDuration'));
-      song.duration = raw.duration;
-    }
+    if (raw.duration != null && raw.duration !== '') song.duration = normDuration(raw.duration);
     if (typeof raw.notes === 'string' && raw.notes.trim()) song.notes = raw.notes.trim().slice(0, 500);
+    for (const k of ['artist', 'section']) {
+      if (typeof raw[k] === 'string' && raw[k].trim()) song[k] = raw[k].trim().slice(0, 80);
+    }
+    // Champs inconnus (ex. « chant ») : conservés tels quels et réexportés, sans être affichés.
+    const extra = {};
+    const keep = (k, v) => { if (!KNOWN.has(k) && ['string', 'number', 'boolean'].includes(typeof v)) extra[k] = v; };
+    if (raw.extra && typeof raw.extra === 'object') Object.entries(raw.extra).forEach(([k, v]) => keep(k, v));
+    Object.entries(raw).forEach(([k, v]) => keep(k, v));
+    if (Object.keys(extra).length) song.extra = extra;
     return song;
+  }
+
+  const KNOWN = new Set(['id', 'klik', 'type', 'name', 'tempo', 'signature', 'pattern', 'countIn', 'duration', 'notes', 'artist', 'section', 'extra']);
+
+  // Durée « m:ss », « mm:ss » ou « h:mm:ss » → « m:ss » (minutes au-delà de 59 si besoin).
+  function normDuration(raw) {
+    const m = typeof raw === 'string' && /^(?:(\d{1,2}):)?(\d{1,3}):([0-5]\d)$/.exec(raw.trim());
+    if (!m || (m[1] != null && Number(m[2]) > 59)) fail(t('errDuration'));
+    return `${Number(m[1] || 0) * 60 + Number(m[2])}:${m[3]}`;
   }
 
   function normConcert(raw, keepId) {
@@ -126,13 +159,22 @@
 
   /* ---------- export / import ---------- */
 
+  // Une signature personnalisée qui se réécrit à l'identique en texte (« 12/8 » sur 12 points) est exportée en texte.
+  function sameAsText(sig) {
+    try {
+      const s = signatureFromText(sig.label, sig.steps);
+      return !!s && s.stepsPerBeat === sig.stepsPerBeat;
+    } catch (e) { return false; }
+  }
+
   function exportSong(song, header = true) {
     const out = header ? { klik: FORMAT, type: 'song' } : {};
     out.name = song.name;
     out.tempo = song.tempo;
-    out.signature = isPreset(song.signature) ? song.signature.label : { ...song.signature };
+    out.signature = isPreset(song.signature) || sameAsText(song.signature) ? song.signature.label : { ...song.signature };
     out.pattern = song.pattern;
-    for (const k of ['countIn', 'duration', 'notes']) if (song[k] != null) out[k] = song[k];
+    for (const k of ['countIn', 'duration', 'notes', 'artist', 'section']) if (song[k] != null) out[k] = song[k];
+    if (song.extra) for (const [k, v] of Object.entries(song.extra)) if (!(k in out)) out[k] = v;
     return out;
   }
   const exportConcert = c => ({ klik: FORMAT, type: 'concert', name: c.name, songs: c.songs.map(s => exportSong(s, false)) });

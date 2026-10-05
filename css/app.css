@@ -477,6 +477,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
+.row-section {
+  margin-bottom: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
 .row-meta { font-size: 13px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .row-more {
   width: 48px;

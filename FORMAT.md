@@ -43,11 +43,14 @@ Les objets copiés par Klik commencent par deux champs :
 | ----------- | ----------- | ----------- |
 | `name`      | non         | Nom du morceau (80 caractères max). |
 | `tempo`     | oui         | BPM, entre 30 et 300. |
-| `signature` | non         | `"2/4"`, `"3/4"`, `"4/4"`, `"6/8"` ou un objet personnalisé (voir plus bas). Déduite du motif si absente. |
+| `signature` | non         | `"2/4"`, `"3/4"`, `"4/4"`, `"6/8"`, une autre signature en texte (`"12/8"`, `"5/4"`…) ou un objet personnalisé (voir plus bas). Déduite du motif si absente. |
 | `pattern`   | non         | Un caractère par point : `X` fort, `x` moyen, `.` rien. Le 1er caractère est toujours le temps 1. Motif par défaut : seulement les temps (2 en 2/4, 3 en 3/4, 4 en 4/4, 6 croches en 6/8). |
 | `countIn`   | non         | Décompte, en mesures (0 à 8). Pas encore utilisé par l'interface. |
-| `duration`  | non         | Durée au format `"m:ss"`, par exemple `"3:45"`. |
+| `duration`  | non         | Durée `"m:ss"` ou `"h:mm:ss"`, par exemple `"3:45"` ou `"00:03:45"`. Enregistrée en `"m:ss"`. |
+| `artist`    | non         | Artiste, affiché dans la liste. |
+| `section`   | non         | Partie du concert (`"Première partie"`, `"Rappels"`…), affichée en intertitre dans la liste. |
 | `notes`     | non         | Texte libre (500 caractères max). |
+| autres      | non         | Tout autre champ simple (texte, nombre, booléen), par exemple `"chant": "Pascal"`, est conservé et réexporté tel quel, sans être affiché. |
 
 ### Signatures prédéfinies
 
@@ -66,9 +69,19 @@ Par exemple une salsa à 190 à la noire devient :
   "signature": "4/4", "pattern": "X..X..X...X.X..." }
 ```
 
+### Autres signatures en texte
+
+Une signature `"N/D"` hors des quatre prédéfinies est acceptée en texte. Le nombre de temps vient
+de N (en mesure composée, N/3 temps : 12/8 → 4 temps, 9/8 → 3 temps), le nombre de points vient de
+la longueur du motif, qui doit être un multiple du nombre de temps :
+
+```json
+{ "tempo": 84, "signature": "12/8", "pattern": "X.xX.xX.xX.x" }
+```
+
 ### Signature personnalisée
 
-N'importe quelle grille peut être collée sous forme d'objet :
+N'importe quelle grille peut aussi être collée sous forme d'objet :
 
 ```json
 "signature": { "label": "12/8", "steps": 12, "stepsPerBeat": 3 }
