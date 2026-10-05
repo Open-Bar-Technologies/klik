@@ -1,0 +1,471 @@
+<title>Klik</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  /* Layout : un seul écran, instrument plein cadre façon « Niveau ».
+     Bandeau d'infos en haut, gros cercle au centre, réglages au pouce en bas. */
+  :root {
+    --surface-0: #f4f6f3;
+    --surface-1: #e4e9e3;
+    --text-primary: #0f1a12;
+    --text-secondary: #5b6a5e;
+    --border-strong: #0f1a12;
+    --accent: #1c6130;
+    --accent-ink: #ffffff;
+    --accent-glow: rgba(28, 97, 48, .45);
+    --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+    --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --surface-0: #0b0f0c;
+      --surface-1: #18201a;
+      --text-primary: #eef3ee;
+      --text-secondary: #8a988c;
+      --border-strong: #eef3ee;
+      --accent: #2f9e52;
+      --accent-ink: #04140a;
+      --accent-glow: rgba(64, 196, 108, .6);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --surface-0: #0b0f0c;
+    --surface-1: #18201a;
+    --text-primary: #eef3ee;
+    --text-secondary: #8a988c;
+    --border-strong: #eef3ee;
+    --accent: #2f9e52;
+    --accent-ink: #04140a;
+    --accent-glow: rgba(64, 196, 108, .6);
+    color-scheme: dark;
+  }
+
+  html, body { height: 100%; }
+  body {
+    background: var(--surface-0);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    overflow: hidden;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .app {
+    height: 100%;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    padding-inline: 16px;
+    padding-block: 12px 20px;
+    box-sizing: border-box;
+    touch-action: pan-y;
+  }
+
+  /* ---------- bandeau haut ---------- */
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+  .top .stat strong {
+    display: block;
+    color: var(--text-primary);
+    font-size: 22px;
+    letter-spacing: .02em;
+    font-weight: 600;
+  }
+  .meter {
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    text-align: center;
+    cursor: pointer;
+  }
+  .icon-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 2px solid var(--border-strong);
+    background: transparent;
+    font-size: 22px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  /* ---------- cercle ---------- */
+  .stage {
+    display: grid;
+    place-items: center;
+    min-height: 0;
+  }
+  .pulse {
+    --size: min(82vw, 52vh, 440px);
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    border: 3px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-primary);
+    display: grid;
+    place-content: center;
+    gap: 4px;
+    cursor: pointer;
+    position: relative;
+    font: inherit;
+    padding: 0;
+  }
+  .bpm {
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: max(120px, calc(var(--size) * .42));
+    line-height: .85;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -.01em;
+  }
+  .bpm-label {
+    font-size: 14px;
+    letter-spacing: .3em;
+    text-transform: uppercase;
+    color: inherit;
+    opacity: .7;
+  }
+  .state {
+    font-size: 13px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    margin-top: 10px;
+    opacity: .75;
+  }
+  .beats {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+  }
+  .beats i {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 2px solid currentColor;
+    opacity: .45;
+  }
+  .beats i.on { background: currentColor; opacity: 1; }
+
+  /* ---------- bas ---------- */
+  .controls {
+    display: grid;
+    grid-template-columns: 76px 1fr 76px;
+    gap: 12px;
+    align-items: stretch;
+  }
+  .ctl {
+    height: 76px;
+    border-radius: 20px;
+    border: 2px solid var(--border-strong);
+    background: transparent;
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 44px;
+    cursor: pointer;
+  }
+  .tap {
+    font-family: var(--font-mono);
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: .2em;
+  }
+  .ctl:active, .icon-btn:active, .tap.hit {
+    background: var(--surface-1);
+  }
+  .hint {
+    margin-top: 12px;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+  button:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+  }
+
+  /* toast de swipe */
+  .toast {
+    position: fixed;
+    left: 50%;
+    top: 22%;
+    transform: translateX(-50%);
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 64px;
+    color: var(--accent);
+    pointer-events: none;
+    opacity: 0;
+  }
+
+  @media (max-height: 560px) {
+    .ctl { height: 60px; font-size: 34px; }
+    .hint { display: none; }
+  }
+</style>
+
+<main class="app" id="app">
+  <header class="top">
+    <div class="stat">Temps<strong id="clock">00:00</strong></div>
+    <button class="meter stat" id="meter" type="button" aria-label="Changer la signature">
+      Mesure<strong id="beatLabel">–/4</strong>
+    </button>
+    <button class="icon-btn" id="mute" type="button" aria-label="Couper le son">🔊</button>
+  </header>
+
+  <section class="stage">
+    <button class="pulse" id="pulse" type="button" aria-label="Lecture / pause">
+      <span class="bpm" id="bpm">120</span>
+      <span class="bpm-label">BPM</span>
+      <span class="state" id="state">▶ Toucher pour lancer</span>
+      <span class="beats" id="beats" aria-hidden="true"></span>
+    </button>
+  </section>
+
+  <footer>
+    <div class="controls">
+      <button class="ctl" id="minus" type="button" aria-label="Diminuer de 1 BPM">−</button>
+      <button class="ctl tap" id="tap" type="button">TAP TEMPO</button>
+      <button class="ctl" id="plus" type="button" aria-label="Augmenter de 1 BPM">+</button>
+    </div>
+    <div class="hint">← glisser −5 · +5 glisser →</div>
+  </footer>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const MIN = 30, MAX = 300;
+  const $ = id => document.getElementById(id);
+  const el = {
+    bpm: $('bpm'), pulse: $('pulse'), state: $('state'), beats: $('beats'),
+    clock: $('clock'), beatLabel: $('beatLabel'), meter: $('meter'),
+    mute: $('mute'), minus: $('minus'), plus: $('plus'), tap: $('tap'),
+    toast: $('toast'), app: $('app')
+  };
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  let bpm = 120;
+  let beatsPerBar = 4;
+  let playing = false;
+  let muted = false;
+  let ctx = null;
+  let nextTime = 0, beatIndex = 0, timerId = null;
+  let queue = [];            // { time, beat } pour synchroniser l'affichage
+  let startedAt = 0, elapsedBefore = 0;
+  let wakeLock = null;
+
+  try {
+    const saved = JSON.parse(localStorage.getItem('klik') || '{}');
+    if (saved.bpm) bpm = clamp(saved.bpm);
+    if (saved.beatsPerBar) beatsPerBar = saved.beatsPerBar;
+    if (typeof saved.muted === 'boolean') muted = saved.muted;
+  } catch (e) {}
+  function save() {
+    try { localStorage.setItem('klik', JSON.stringify({ bpm, beatsPerBar, muted })); } catch (e) {}
+  }
+
+  function clamp(v) { return Math.max(MIN, Math.min(MAX, Math.round(v))); }
+
+  function setBpm(v) {
+    bpm = clamp(v);
+    el.bpm.textContent = bpm;
+    save();
+  }
+
+  function renderBeats(active = -1) {
+    el.beats.innerHTML = '';
+    for (let i = 0; i < beatsPerBar; i++) {
+      const d = document.createElement('i');
+      if (i === active) d.className = 'on';
+      el.beats.appendChild(d);
+    }
+    el.beatLabel.textContent = (active < 0 ? '–' : active + 1) + '/' + beatsPerBar;
+  }
+
+  function renderMute() {
+    el.mute.textContent = muted ? '🔇' : '🔊';
+    el.mute.setAttribute('aria-label', muted ? 'Activer le son' : 'Couper le son');
+  }
+
+  /* ---------- audio : planification Web Audio avec anticipation ---------- */
+  function click(time, accent) {
+    if (muted) return;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = accent ? 620 : 1480;   // 1er temps grave, autres aigus
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(accent ? 0.7 : 0.45, time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + (accent ? 0.09 : 0.05));
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(time);
+    osc.stop(time + 0.1);
+  }
+
+  function scheduler() {
+    while (nextTime < ctx.currentTime + 0.12) {
+      click(nextTime, beatIndex === 0);
+      queue.push({ time: nextTime, beat: beatIndex });
+      nextTime += 60 / bpm;
+      beatIndex = (beatIndex + 1) % beatsPerBar;
+    }
+  }
+
+  /* ---------- visuel ---------- */
+  function flash(beat) {
+    renderBeats(beat);
+    if (reduceMotion) return;
+    const strong = beat === 0;
+    if (strong) {
+      el.pulse.animate([
+        { background: 'var(--accent)', color: 'var(--accent-ink)', borderColor: 'var(--accent)', transform: 'scale(1.03)' },
+        { background: 'transparent', color: 'var(--text-primary)', borderColor: 'var(--border-strong)', transform: 'scale(1)' }
+      ], { duration: Math.min(260, 60000 / bpm * 0.6), easing: 'cubic-bezier(.2,.7,.3,1)' });
+    } else {
+      el.pulse.animate([
+        { boxShadow: '0 0 0 14px var(--accent), 0 0 60px 20px var(--accent-glow)', borderColor: 'var(--accent)' },
+        { boxShadow: '0 0 0 0 transparent, 0 0 0 0 transparent', borderColor: 'var(--border-strong)' }
+      ], { duration: Math.min(220, 60000 / bpm * 0.5), easing: 'ease-out' });
+    }
+  }
+
+  function frame() {
+    if (!playing) return;
+    const now = ctx.currentTime;
+    while (queue.length && queue[0].time <= now) flash(queue.shift().beat);
+    const secs = Math.floor((elapsedBefore + performance.now() - startedAt) / 1000);
+    el.clock.textContent = String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+    requestAnimationFrame(frame);
+  }
+
+  async function start() {
+    if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
+    if (ctx.state === 'suspended') await ctx.resume();
+    playing = true;
+    beatIndex = 0;
+    queue = [];
+    nextTime = ctx.currentTime + 0.06;
+    startedAt = performance.now();
+    scheduler();
+    timerId = setInterval(scheduler, 25);
+    el.state.textContent = '❚❚ Pause';
+    requestAnimationFrame(frame);
+    try { wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) {}
+    try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.(); } catch (e) {}
+  }
+
+  function stop() {
+    playing = false;
+    clearInterval(timerId);
+    elapsedBefore += performance.now() - startedAt;
+    queue = [];
+    el.state.textContent = '▶ Reprendre';
+    renderBeats(-1);
+    try { wakeLock?.release(); } catch (e) {}
+    wakeLock = null;
+  }
+
+  /* ---------- tap tempo ---------- */
+  let taps = [];
+  function tap() {
+    const t = performance.now();
+    if (taps.length && t - taps[taps.length - 1] > 2000) taps = [];
+    taps.push(t);
+    if (taps.length > 6) taps.shift();
+    if (taps.length >= 2) {
+      const span = (taps[taps.length - 1] - taps[0]) / (taps.length - 1);
+      setBpm(60000 / span);
+    }
+    el.tap.classList.add('hit');
+    setTimeout(() => el.tap.classList.remove('hit'), 90);
+  }
+
+  /* ---------- appui long sur +/− ---------- */
+  function repeater(btn, delta) {
+    let t1, t2;
+    const stopRep = () => { clearTimeout(t1); clearInterval(t2); };
+    btn.addEventListener('pointerdown', e => {
+      e.stopPropagation();
+      setBpm(bpm + delta);
+      t1 = setTimeout(() => { t2 = setInterval(() => setBpm(bpm + delta), 70); }, 400);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stopRep));
+  }
+  repeater(el.minus, -1);
+  repeater(el.plus, +1);
+
+  /* ---------- swipe ---------- */
+  let sx = 0, sy = 0, swiped = false;
+  el.app.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; swiped = false; });
+  el.app.addEventListener('pointerup', e => {
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      swiped = true;
+      const d = dx > 0 ? 5 : -5;
+      setBpm(bpm + d);
+      showToast((d > 0 ? '+' : '−') + '5');
+    }
+  });
+  function showToast(text) {
+    el.toast.textContent = text;
+    el.toast.animate([
+      { opacity: 1, transform: 'translate(-50%, 0)' },
+      { opacity: 0, transform: 'translate(-50%, -20px)' }
+    ], { duration: 600, easing: 'ease-out' });
+  }
+
+  /* ---------- liaisons ---------- */
+  el.pulse.addEventListener('click', () => {
+    if (swiped) { swiped = false; return; }
+    playing ? stop() : start();
+  });
+  el.tap.addEventListener('pointerdown', e => { e.stopPropagation(); tap(); });
+  el.mute.addEventListener('click', () => { muted = !muted; renderMute(); save(); });
+  el.meter.addEventListener('click', () => {
+    const order = [2, 3, 4, 5, 6, 7];
+    beatsPerBar = order[(order.indexOf(beatsPerBar) + 1) % order.length];
+    beatIndex = 0;
+    renderBeats(-1);
+    save();
+  });
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space') { e.preventDefault(); playing ? stop() : start(); }
+    if (e.key === 'ArrowUp') setBpm(bpm + 1);
+    if (e.key === 'ArrowDown') setBpm(bpm - 1);
+    if (e.key === 'ArrowRight') setBpm(bpm + 5);
+    if (e.key === 'ArrowLeft') setBpm(bpm - 5);
+    if (e.key.toLowerCase() === 't') tap();
+  });
+  document.addEventListener('visibilitychange', async () => {
+    if (playing && document.visibilityState === 'visible') {
+      try { wakeLock = await navigator.wakeLock?.request('screen'); } catch (e) {}
+    }
+  });
+
+  setBpm(bpm);
+  renderBeats(-1);
+  renderMute();
+})();
+</script>
