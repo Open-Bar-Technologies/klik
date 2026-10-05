@@ -23,8 +23,8 @@ const SEED = JSON.stringify({
   current: { tempo: 120, signature: '4/4', pattern: 'X...X...X...X...', concertId: null, songId: null, dirty: false },
 });
 const TEXT = {
-  fr: { concert: 'Bal du samedi', newConcert: 'Nouveau concert', paste: 'Coller', share: 'Partager', edit: 'Modifier le nom et le tempo' },
-  en: { concert: 'Saturday dance', newConcert: 'New gig', paste: 'Paste', share: 'Share', edit: 'Edit name and tempo' },
+  fr: { concert: 'Anniversaire Sam', newConcert: 'Nouveau concert', paste: 'Coller', share: 'Partager', edit: 'Modifier le nom et le tempo' },
+  en: { concert: 'Sam’s birthday', newConcert: 'New gig', paste: 'Paste', share: 'Share', edit: 'Edit name and tempo' },
 };
 const RECEIVED = APP + '#k=z' + deflateRawSync(Buffer.from(JSON.stringify(
   { klik: 2, type: 'song', name: 'Osez Joséphine', tempo: 118, signature: '4/4', pattern: 'X.X..X..X..X..X.' },
@@ -43,8 +43,8 @@ async function phone(locale) {
     const body = execFileSync('curl', ['-sSL', '-A', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36', url], { maxBuffer: 1 << 26 });
     route.fulfill({ status: 200, body, contentType: url.includes('googleapis') ? 'text/css' : 'font/woff2', headers: { 'access-control-allow-origin': '*' } });
   });
+  // Pas de données préparées : l'app démarre comme au premier lancement, avec ses deux concerts d'exemple.
   await ctx.addInitScript(([seed, received]) => {
-    if (!localStorage.getItem('klik.data')) localStorage.setItem('klik.data', seed);
     navigator.share = async () => {};
     Element.prototype.requestFullscreen = undefined;
     if (navigator.clipboard) Object.defineProperty(navigator.clipboard, 'readText', { value: async () => received });
@@ -81,6 +81,12 @@ async function freezeFlash(page, downbeat) {
   await page.waitForTimeout(80);
 }
 const resume = page => page.evaluate(() => document.getAnimations().forEach(x => x.play()));
+
+// Lien de partage d'un concert, calculé comme le fait le bouton Partager.
+const shareLink = (page, name) => page.evaluate(async name => {
+  const c = Klik.store.load().concerts.find(x => x.name === name);
+  return location.href.split('#')[0] + '#k=' + await Klik.store.encodeShare(Klik.store.exportConcert(c));
+}, name);
 
 async function typeTempo(page, v) {
   await page.dblclick('#bpm');
@@ -122,7 +128,8 @@ for (const lang of ['fr', 'en']) {
   await snap(p, lang);                                   // 03 : 4 frappes → 104
   await typeTempo(p, 104);                               // au cas où le TAP aurait dévié d'un BPM
 
-  // 2. Accents : Dancing Queen
+  // 2. Accents : on repart des seuls temps (4/4), puis Dancing Queen
+  await p.click('.chip:has-text("4/4")');
   for (const [i, n] of [[3, 2], [4, 1], [6, 2], [8, 1], [9, 2]]) {
     for (let k = 0; k < n; k++) await p.click(`.pt[data-i="${i}"]`);
   }
@@ -138,9 +145,10 @@ for (const lang of ['fr', 'en']) {
   await p.click('#mute');
 
   // 3. Setlist
-  await p.click('#openLibrary');
+  await p.click('#openLibrary');                         // s'ouvre sur le concert d'exemple en cours
+  await p.click('#libBack');
   await p.waitForTimeout(300);
-  await snap(p, lang);                                   // 06 : liste vide, lien vers le guide
+  await snap(p, lang);                                   // 06 : les concerts d'exemple, lien vers le guide
   await p.click(`.btn:has-text("${T.newConcert}")`);
   await p.waitForTimeout(200);   // le champ prend le focus après 50 ms
   await p.keyboard.type(T.concert);
@@ -182,7 +190,7 @@ for (const lang of ['fr', 'en']) {
   await p.waitForTimeout(400);
   await snap(p, lang);                                   // 10 : feuille de partage
   await p.click('.sheet .btn:last-child');               // Annuler
-  const link1 = await p.evaluate(async () => location.href.split('#')[0] + '#k=' + await Klik.store.encodeShare(Klik.store.exportConcert(Klik.store.load().concerts[0])));
+  const link1 = await shareLink(p, T.concert);
 
   const q = await phone(lang === 'fr' ? 'fr-FR' : 'en-US');
   await q.evaluate(h => { location.hash = h; }, new URL(link1).hash);
@@ -197,7 +205,7 @@ for (const lang of ['fr', 'en']) {
   await p.fill('#songTempo', '176');
   await p.click('.sheet .btn.primary');
   await p.waitForTimeout(400);
-  const link2 = await p.evaluate(async () => location.href.split('#')[0] + '#k=' + await Klik.store.encodeShare(Klik.store.exportConcert(Klik.store.load().concerts[0])));
+  const link2 = await shareLink(p, T.concert);
   await q.evaluate(h => { location.hash = h; }, new URL(link2).hash);
   await q.waitForSelector('.sheet .btn.primary');
   await q.waitForTimeout(300);

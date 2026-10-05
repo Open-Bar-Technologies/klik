@@ -17,10 +17,6 @@ mkdirSync(OUT + 'frames', { recursive: true });
 
 const APP1 = 'http://localhost:8765/';
 const APP2 = 'http://127.0.0.1:8765/';   // autre origine : stockage séparé (le téléphone du batteur)
-const SEED = JSON.stringify({
-  schema: 3, muted: false, concerts: [],
-  current: { tempo: 120, signature: '4/4', pattern: 'X...X...X...X...', concertId: null, songId: null, dirty: false },
-});
 
 const browser = await pw.chromium.launch({ args: ['--autoplay-policy=no-user-gesture-required'] });
 const ctx = await browser.newContext({
@@ -48,9 +44,9 @@ let sharedUrl = null;
 await ctx.exposeBinding('__klikClipboard', () => RECEIVED);
 await ctx.exposeBinding('__klikHit', (_, h) => hits.push(h));
 await ctx.exposeBinding('__klikShare', (_, url) => { sharedUrl = url; });
-await ctx.addInitScript(seed => {
+// Pas de données préparées : l'app démarre comme au premier lancement, avec ses concerts d'exemple.
+await ctx.addInitScript(() => {
   if (location.port !== '8765' || location.pathname !== '/') return;
-  if (!localStorage.getItem('klik.data')) localStorage.setItem('klik.data', seed);
   // Feuille de partage du téléphone simulée : on récupère le lien.
   navigator.share = async d => { await window.__klikShare(d.url); };
   if (navigator.clipboard) Object.defineProperty(navigator.clipboard, 'readText', { value: () => window.__klikClipboard() });
@@ -76,7 +72,7 @@ await ctx.addInitScript(seed => {
       return out;
     };
   }, 20);
-}, SEED);
+});
 
 const page = await ctx.newPage();
 await page.goto('http://localhost:8765/video/stage.html');
@@ -224,6 +220,8 @@ await st('touchHide');
 await sequence(2, 'Les accents', 'Le rythme du morceau, pas seulement les temps');
 await caption('Chaque point,<br>un coup', 'Touche un point pour changer son accent :', 1200, true);
 await wait(2500);
+await caption('Les seuls temps', 'Toucher <span class="k">4/4</span> remet le motif à ses seuls temps.', 1800);
+await tap(f1.locator('.chip', { hasText: '4/4' }), { after: 1500 });
 await tap(f1.locator('#play'), { after: 300 });
 await st('touchHide');
 await wait(4000);                                   // 2 mesures du 4/4 de base
@@ -243,10 +241,12 @@ await st('touchHide');
 
 // 3. La setlist
 await sequence(3, 'Ta setlist', 'Les morceaux du concert, dans l’ordre');
-await caption('Un concert', '<span class="k">☰</span>, puis « Nouveau concert ».', 1500);
-await tap(f1.locator('#openLibrary'), { after: 1200 });
+await caption('Un concert', '<span class="k">☰</span> ouvre le concert d’exemple en cours, <span class="k">‹</span> montre tous les concerts.', 2200);
+await tap(f1.locator('#openLibrary'), { after: 1500 });
+await tap(f1.locator('#libBack'), { after: 1500 });
+await caption('Un concert', 'Deux concerts d’exemple sont déjà là. On crée le nôtre : « Nouveau concert ».', 2200);
 await tap(f1.locator('.btn', { hasText: 'Nouveau concert' }), { after: 500 });
-await type('Bal du samedi');
+await type('Anniversaire Sam');
 await wait(600);
 await tap(f1.locator('.sheet .btn.primary'), { after: 1500 });
 async function saveCurrent(name) {

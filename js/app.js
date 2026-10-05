@@ -391,6 +391,14 @@
     return h('button', { type: 'button', class: 'btn ' + (kind || ''), onclick: run }, label);
   }
 
+  // Bas de page de la liste : lien vers le guide illustré (dans la langue de l'interface) et version.
+  // L'app installée n'a pas de bouton retour : le guide a son propre lien « Retour à Klik ».
+  function guideLine() {
+    return h('p', { class: 'version' },
+      h('a', { class: 'guide-link', href: `guide.html?lang=${K.i18n.lang}` }, t('howItWorks')),
+      ` · ${version ? `Klik ${version}` : 'Klik'}`);
+  }
+
   function renderConcertsView() {
     libView = { name: 'concerts', concertId: null };
     ui.libBack.hidden = true;
@@ -402,14 +410,9 @@
       }, h('span', { class: 'row-name' }, c.name), h('span', { class: 'row-meta' }, t('songCount', c.songs.length))),
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: c.name }), onclick: () => concertActions(c) }, '⋯'),
     ));
-    // Guide illustré (guide.html), dans la langue de l'interface. L'app installée n'a pas de bouton
-    // retour : le guide a son propre lien « Retour à Klik ».
-    const guide = cls => h('a', { class: cls, href: `guide.html?lang=${K.i18n.lang}` }, t('howItWorks'));
     ui.libBody.replaceChildren(
-      rows.length ? h('ul', { class: 'rows' }, rows)
-        : h('div', { class: 'empty' }, h('p', {}, t('noConcerts')), h('p', {}, guide('guide-link'))),
-      // Liste vide : le lien est déjà sous le message d'accueil.
-      h('p', { class: 'version' }, rows.length ? [guide('guide-link'), ' · '] : null, version ? `Klik ${version}` : 'Klik'),
+      rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('noConcerts')),
+      guideLine(),
     );
     ui.libFoot.replaceChildren(
       footButton(t('newConcert'), newConcert, 'primary'),
@@ -436,6 +439,7 @@
         h('strong', {}, t('saveCurrent')),
         h('span', {}, `${cur.tempo} BPM · ${cur.signature.label} · ${cur.pattern}`)),
       rows.length ? h('ul', { class: 'rows', id: 'songRows' }, rows) : h('p', { class: 'empty' }, t('emptyConcert')),
+      guideLine(),
     );
     ui.libFoot.replaceChildren(
       footButton(t('share'), () => shareSheet(S.exportConcert(c), c.name)),
