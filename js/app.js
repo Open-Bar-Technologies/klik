@@ -402,9 +402,14 @@
       }, h('span', { class: 'row-name' }, c.name), h('span', { class: 'row-meta' }, t('songCount', c.songs.length))),
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: c.name }), onclick: () => concertActions(c) }, '⋯'),
     ));
+    // Guide illustré (guide.html), dans la langue de l'interface. L'app installée n'a pas de bouton
+    // retour : le guide a son propre lien « Retour à Klik ».
+    const guide = cls => h('a', { class: cls, href: `guide.html?lang=${K.i18n.lang}` }, t('howItWorks'));
     ui.libBody.replaceChildren(
-      rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('noConcerts')),
-      h('p', { class: 'version' }, version ? `Klik ${version}` : 'Klik'),
+      rows.length ? h('ul', { class: 'rows' }, rows)
+        : h('div', { class: 'empty' }, h('p', {}, t('noConcerts')), h('p', {}, guide('guide-link'))),
+      // Liste vide : le lien est déjà sous le message d'accueil.
+      h('p', { class: 'version' }, rows.length ? [guide('guide-link'), ' · '] : null, version ? `Klik ${version}` : 'Klik'),
     );
     ui.libFoot.replaceChildren(
       footButton(t('newConcert'), newConcert, 'primary'),

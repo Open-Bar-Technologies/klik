@@ -4,7 +4,7 @@
 // l'active avec le bandeau « Mettre à jour ».
 //
 // SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
-const VERSION = '0.12.0';
+const VERSION = '0.13.0';
 
 const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';
@@ -22,6 +22,33 @@ const ASSETS = [
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',
   'icons/favicon-32.png',
+  // Guide illustré (~0,5 Mo), disponible hors-ligne. La vidéo (video/) ne l'est pas : trop lourde.
+  'guide.html',
+  'guide/poster.webp',
+  'guide/fr-01.webp',
+  'guide/fr-02.webp',
+  'guide/fr-03.webp',
+  'guide/fr-04.webp',
+  'guide/fr-05.webp',
+  'guide/fr-06.webp',
+  'guide/fr-07.webp',
+  'guide/fr-08.webp',
+  'guide/fr-09.webp',
+  'guide/fr-10.webp',
+  'guide/fr-11.webp',
+  'guide/fr-12.webp',
+  'guide/en-01.webp',
+  'guide/en-02.webp',
+  'guide/en-03.webp',
+  'guide/en-04.webp',
+  'guide/en-05.webp',
+  'guide/en-06.webp',
+  'guide/en-07.webp',
+  'guide/en-08.webp',
+  'guide/en-09.webp',
+  'guide/en-10.webp',
+  'guide/en-11.webp',
+  'guide/en-12.webp',
 ];
 
 self.addEventListener('install', event => {

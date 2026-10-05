@@ -3,7 +3,7 @@
 Tempo de référence pour le groupe avant chaque morceau, avec une setlist par concert.
 Klik est une PWA : elle s'installe sur l'écran d'accueil et fonctionne sans réseau.
 L'interface est en français ou en anglais selon la langue du navigateur.
-Présentation en vidéo (4 min) : [video/klik-presentation.mp4](video/klik-presentation.mp4).
+Guide illustré, imprimable, en français et en anglais : [guide.html](guide.html), avec la vidéo de présentation (4 min). Dans l'app, le lien « Comment ça marche ? » est en bas de la liste des concerts.
 
 ## Utilisation
 
@@ -29,6 +29,7 @@ Présentation en vidéo (4 min) : [video/klik-presentation.mp4](video/klik-prese
 | `js/engine.js`         | Planification audio (Web Audio) |
 | `js/app.js`            | Interface |
 | `sw.js`                | Service worker (hors-ligne, mises à jour) |
+| `guide.html`, `guide/` | Guide illustré (FR/EN, imprimable), disponible hors-ligne. Captures : `node video/guide-shots.mjs` |
 | `sw.js` → `VERSION`    | **Numéro de version unique** |
 
 ## Versions et mises à jour

@@ -19,3 +19,8 @@ python3 video/build.py               # numpy + ffmpeg, écrit video/klik-present
 ```
 
 Les textes à l'écran sont dans `record.mjs` (appels `caption`) et `stage.html` (intro, fin, légende).
+
+## Captures du guide
+
+`guide-shots.mjs` refait les 24 captures de `guide.html` (`guide/fr-NN.webp`, `guide/en-NN.webp`) sur la vraie app,
+dans les deux langues. À relancer quand l'interface change (serveur local lancé comme ci-dessus).

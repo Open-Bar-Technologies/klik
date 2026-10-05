@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Klik · Guide</title>
+  <meta name="description" content="Comment utiliser Klik : tempo, accents, setlist et partage. How to use Klik: tempo, accents, setlist and sharing.">
+  <meta name="theme-color" content="#0b0f0c">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="icons/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+    /* Guide illustré de Klik. Mêmes textes que la vidéo (video/), captures faites par
+       video/guide-shots.mjs. À l'écran : thème sombre comme l'app. À l'impression : fond blanc,
+       captures inversées en clair, une partie par page. */
+    :root {
+      --bg: #0b0f0c; --surface: #121813; --line: #263027;
+      --ink: #eef3ee; --ink2: #a7b4a9; --ink3: #8a988c; --accent: #34a65a; --accent-soft: #2b6b3f;
+      --display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+      --sans: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 400 18px/1.55 var(--sans); }
+    html[lang="fr"] [lang="en"], html[lang="en"] [lang="fr"] { display: none !important; }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    .k { font: 600 .92em var(--mono); color: var(--accent); white-space: nowrap; }
+
+    /* barre du haut */
+    .bar { position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; gap: 16px;
+      padding: max(12px, env(safe-area-inset-top)) 16px 12px; background: rgba(11,15,12,.92); backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line); }
+    .bar a { font: 600 16px var(--mono); text-decoration: none; padding: 10px 14px; border-radius: 12px; border: 2px solid var(--line); color: var(--ink); }
+    .bar .back { border-color: var(--accent); color: var(--accent); }
+
+    main { max-width: 920px; margin: 0 auto; padding: 0 16px 64px; }
+    header.hero { padding: 48px 0 24px; }
+    .hero h1 { font: 900 clamp(64px, 14vw, 120px)/0.9 var(--display); text-transform: uppercase; margin: 0; }
+    .hero p { font-size: clamp(20px, 3.4vw, 26px); color: var(--ink2); margin: 14px 0 0; max-width: 36ch; }
+    .video { margin: 32px 0 8px; }
+    .video video { width: 100%; aspect-ratio: 16 / 9; display: block; border-radius: 16px; border: 1px solid var(--line); background: #000; }
+    .video p { color: var(--ink3); font-size: 15px; margin: 10px 0 0; }
+    .print-only { display: none; }
+
+    nav.toc { display: flex; flex-wrap: wrap; gap: 10px; margin: 28px 0 8px; padding: 0; list-style: none; }
+    nav.toc a { display: inline-block; font: 600 16px var(--mono); color: var(--ink); text-decoration: none; border: 2px solid var(--line); border-radius: 999px; padding: 7px 16px; }
+
+    section.part { padding-top: 56px; }
+    .part > .num { font: 600 18px var(--mono); color: var(--accent); }
+    .part > h2 { font: 900 clamp(48px, 9vw, 76px)/0.95 var(--display); text-transform: uppercase; margin: 6px 0 8px; }
+    .part > .lead { font-size: 21px; color: var(--ink2); margin: 0 0 8px; }
+
+    .step { display: grid; grid-template-columns: 220px 1fr; gap: 32px; align-items: center; padding: 28px 0; border-bottom: 1px solid var(--line); }
+    .step:last-child { border-bottom: 0; }
+    .step img { width: 100%; height: auto; display: block; border-radius: 26px; border: 6px solid #252d27; box-shadow: 0 0 0 1px #39433b, 0 18px 40px rgba(0,0,0,.45); background: var(--bg); }
+    .step h3 { font: 900 clamp(32px, 6vw, 44px)/1 var(--display); text-transform: uppercase; margin: 0 0 12px; }
+    .step p { margin: 0 0 10px; font-size: 19px; }
+    .legend { list-style: none; padding: 0; margin: 14px 0 0; display: flex; flex-wrap: wrap; gap: 10px 22px; font-weight: 600; }
+    .legend li { display: flex; align-items: center; gap: 10px; }
+    .legend i { display: inline-block; flex: none; }
+    .legend .dn { width: 14px; height: 14px; margin: 0 3px; background: var(--ink); transform: rotate(45deg); border-radius: 2px; }
+    .legend .st { width: 20px; height: 20px; background: var(--accent); border-radius: 50%; }
+    .legend .md { width: 16px; height: 16px; background: var(--accent-soft); border: 3px solid var(--accent); border-radius: 50%; }
+    .legend .no { width: 11px; height: 11px; margin: 0 4px; border: 2px solid var(--ink3); border-radius: 50%; }
+
+    footer { max-width: 920px; margin: 0 auto; padding: 32px 16px calc(48px + env(safe-area-inset-bottom)); color: var(--ink3); border-top: 1px solid var(--line); }
+
+    @media (max-width: 640px) {
+      .step { grid-template-columns: 120px 1fr; gap: 18px; align-items: start; }
+      .step img { border-radius: 16px; border-width: 4px; }
+      .step p { font-size: 17px; }
+    }
+
+    /* ---------- impression ---------- */
+    @page { size: A4; margin: 14mm 14mm 16mm; }
+    @media print {
+      :root { --bg: #fff; --ink: #000; --ink2: #333; --ink3: #555; --line: #ccc; --accent: #1c6130; --accent-soft: #8dbb9a; color-scheme: light; }
+      body { font-size: 11pt; background: #fff; }
+      .bar, .video video, .video .screen-only, nav.toc { display: none !important; }
+      .print-only { display: block; }
+      main { max-width: none; padding: 0; }
+      header.hero { padding: 0 0 6mm; }
+      .hero h1 { font-size: 54pt; }
+      .hero p { font-size: 14pt; }
+      .video { margin: 4mm 0 0; }
+      .video p { font-size: 11pt; color: #333; }
+      /* Une partie par page (la première suit le titre), les étapes sur deux colonnes. */
+      section.part { padding-top: 0; break-before: page; display: grid; grid-template-columns: 1fr 1fr; gap: 0 8mm; align-content: start; }
+      #tempo, #tempo-en { break-before: auto; padding-top: 4mm; }
+      .part > .num, .part > h2, .part > .lead { grid-column: 1 / -1; }
+      .part > h2 { font-size: 32pt; }
+      .part > .lead { font-size: 12pt; margin-bottom: 4mm; }
+      .step { grid-template-columns: 30mm 1fr; gap: 4mm; padding: 4mm 0; border: 0; align-items: start; break-inside: avoid; }
+      /* Captures sombres → claires : moins d'encre, couleurs conservées. */
+      .step img { filter: invert(1) hue-rotate(180deg); border: 1px solid #999; border-radius: 3mm; box-shadow: none; }
+      .step h3 { font-size: 15pt; margin-bottom: 2mm; }
+      .step p { font-size: 10pt; line-height: 1.4; margin-bottom: 1.5mm; }
+      .legend { margin-top: 2mm; font-size: 9.5pt; gap: 2mm 4mm; }
+      .legend .dn { background: #000; }
+      a { color: #000; text-decoration: none; }
+      footer { border: 0; padding: 6mm 0 0; color: #333; }
+    }
+  </style>
+  <script>
+    // Langue : ?lang=fr|en (envoyé par l'app), sinon même règle que l'app (js/i18n.js).
+    (function () {
+      const asked = new URLSearchParams(location.search).get('lang');
+      const prefs = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language || 'en'];
+      const first = prefs.find(l => /^(fr|en)\b/i.test(l));
+      const lang = asked === 'fr' || asked === 'en' ? asked : (first && /^fr\b/i.test(first) ? 'fr' : 'en');
+      document.documentElement.lang = lang;
+      if (lang === 'en') document.title = 'Klik · Guide';
+    })();
+  </script>
+</head>
+<body>
+  <div class="bar">
+    <a class="back" href="./"><span lang="fr">← Retour à Klik</span><span lang="en">← Back to Klik</span></a>
+    <a href="?lang=en" lang="fr">English</a>
+    <a href="?lang=fr" lang="en">Français</a>
+  </div>
+
+  <main>
+    <header class="hero">
+      <h1>Klik</h1>
+      <p lang="fr">Le tempo de référence pour le groupe, avant chaque morceau. Avec la setlist de chaque concert, à partager.</p>
+      <p lang="en">The reference tempo for the band, before every song. With a setlist for each gig, ready to share.</p>
+      <div class="video">
+        <video controls preload="none" playsinline poster="guide/poster.webp" src="video/klik-presentation.mp4"></video>
+        <p class="screen-only" lang="fr">La vidéo (4 min, avec le son) montre tout ce qui suit. Il faut du réseau pour la regarder ; le reste de cette page marche aussi hors-ligne.</p>
+        <p class="screen-only" lang="en">The video (4 min, with sound, on-screen text in French) shows everything below. It needs a connection; the rest of this page also works offline.</p>
+        <p class="print-only" lang="fr">Vidéo de présentation : klik.lonoize.com/guide.html</p>
+        <p class="print-only" lang="en">Video walkthrough: klik.lonoize.com/guide.html</p>
+      </div>
+      <nav class="toc" lang="fr" aria-label="Sommaire">
+        <a href="#tempo">1 Le tempo</a><a href="#accents">2 Les accents</a><a href="#setlist">3 Ta setlist</a><a href="#partage">4 Partager</a>
+      </nav>
+      <nav class="toc" lang="en" aria-label="Contents">
+        <a href="#tempo">1 Tempo</a><a href="#accents">2 Accents</a><a href="#setlist">3 Your setlist</a><a href="#partage">4 Sharing</a>
+      </nav>
+    </header>
+
+    <!-- ===================== FRANÇAIS ===================== -->
+    <div lang="fr">
+      <section class="part" id="tempo">
+        <div class="num">1</div>
+        <h2>Le tempo</h2>
+        <p class="lead">La référence, avant chaque morceau.</p>
+        <div class="step">
+          <img src="guide/fr-01.webp" width="585" height="1266" loading="lazy" alt="Écran principal en lecture : le cercle flashe en vert sur le temps 1.">
+          <div>
+            <h3>Un toucher sur ▶</h3>
+            <p>Klik donne <strong>le tempo de référence</strong> : on écoute, on compte, on joue.</p>
+            <p>Le temps 1 fait flasher tout le cercle. Toucher le chiffre lance et arrête aussi.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-02.webp" width="585" height="1266" loading="lazy" alt="Le bouton TAP glissé vers la droite, le tempo est monté à 132.">
+          <div>
+            <h3>Plus vite, moins vite</h3>
+            <p>Maintiens <span class="k">TAP</span> et glisse : <strong>à droite plus vite, à gauche moins vite</strong>.</p>
+            <p>Plus on pousse loin, plus le tempo change vite. En paysage, la barre est verticale : on monte pour accélérer.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-03.webp" width="585" height="1266" loading="lazy" alt="Après quatre frappes sur TAP, les quatre points sont allumés et le tempo est 104.">
+          <div>
+            <h3>Ou tape le tempo</h3>
+            <p>Quatre fois sur <span class="k">TAP</span>, en rythme : les quatre points s'allument et le tempo est pris.</p>
+            <p>Deux touchers sur le chiffre permettent aussi de taper le tempo au clavier.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" id="accents">
+        <div class="num">2</div>
+        <h2>Les accents</h2>
+        <p class="lead">Le rythme du morceau, pas seulement les temps.</p>
+        <div class="step">
+          <img src="guide/fr-04.webp" width="585" height="1266" loading="lazy" alt="Le motif de Dancing Queen : des points forts tous les trois points.">
+          <div>
+            <h3>Chaque point, un coup</h3>
+            <p>Chaque point autour du cercle est une double-croche de la mesure. Touche-le pour changer son accent : <strong>rien → moyen → fort</strong>. Ici, le rythme de Dancing Queen.</p>
+            <p>En haut, <span class="k">2/4 · 3/4 · 4/4 · 6/8</span> : choisir une mesure remet le motif à ses seuls temps.</p>
+            <ul class="legend">
+              <li><i class="dn"></i>Temps 1 (grave)</li>
+              <li><i class="st"></i>Fort</li>
+              <li><i class="md"></i>Moyen</li>
+              <li><i class="no"></i>Rien</li>
+            </ul>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-05.webp" width="585" height="1266" loading="lazy" alt="Son coupé : l'icône du haut-parleur est barrée, le cercle flashe quand même.">
+          <div>
+            <h3>Muet ? Ça flashe</h3>
+            <p><span class="k">🔊</span> coupe le son. <strong>Le flash continue</strong> : on voit le tempo sans l'entendre.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" id="setlist">
+        <div class="num">3</div>
+        <h2>Ta setlist</h2>
+        <p class="lead">Les morceaux du concert, dans l'ordre.</p>
+        <div class="step">
+          <img src="guide/fr-06.webp" width="585" height="1266" loading="lazy" alt="La liste des concerts, vide, avec les boutons Nouveau concert et Coller.">
+          <div>
+            <h3>Un concert</h3>
+            <p><span class="k">☰</span> ouvre la liste. « Nouveau concert », un nom, et c'est créé.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-07.webp" width="585" height="1266" loading="lazy" alt="Le formulaire Enregistrer le réglage, avec le nom Dancing Queen et le tempo 104.">
+          <div>
+            <h3>On enregistre</h3>
+            <p>« + Enregistrer le réglage actuel » : le tempo, la mesure et le rythme deviennent un morceau du concert.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-08.webp" width="585" height="1266" loading="lazy" alt="Le concert Bal du samedi avec trois morceaux : Johnny B. Goode, Dancing Queen, Osez Joséphine.">
+          <div>
+            <h3>Dans l'ordre</h3>
+            <p>Glisse <span class="k">≡</span> pour réordonner. <span class="k">⋯</span> pour renommer, changer le tempo, copier ou supprimer un morceau.</p>
+            <p>Un morceau reçu par lien s'ajoute avec « Coller ».</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-09.webp" width="585" height="1266" loading="lazy" alt="Écran principal avec le titre Dancing Queen entre les flèches précédent et suivant.">
+          <div>
+            <h3>Sur scène</h3>
+            <p>Touche un morceau, puis <span class="k">‹ ›</span> pour passer au précédent ou au suivant : <strong>le tempo et le rythme changent d'un toucher</strong>, même pendant la lecture.</p>
+            <p>Toucher le titre rouvre la liste.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" id="partage">
+        <div class="num">4</div>
+        <h2>Partager</h2>
+        <p class="lead">La setlist pour tout le groupe.</p>
+        <div class="step">
+          <img src="guide/fr-10.webp" width="585" height="1266" loading="lazy" alt="La feuille Partager : Envoyer le lien, Copier le lien, Copier le JSON.">
+          <div>
+            <h3>Tout le concert dans un lien</h3>
+            <p>« Partager » puis « Envoyer le lien… » : par WhatsApp, SMS ou mail. « Copier le lien » le met dans le presse-papier.</p>
+            <p>Toute la setlist est dans le lien : <strong>pas de compte, pas de serveur</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-11.webp" width="585" height="1266" loading="lazy" alt="Sur le téléphone du batteur : Importer « Bal du samedi » ? 3 morceaux.">
+          <div>
+            <h3>Le groupe l'ouvre</h3>
+            <p>La personne touche le lien : Klik propose d'importer le concert. Ça marche ensuite hors-ligne.</p>
+            <p>Sur iPhone, un lien s'ouvre dans Safari et pas dans l'app installée sur l'écran d'accueil : mieux vaut copier le lien et toucher « Coller » dans l'app.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/fr-12.webp" width="585" height="1266" loading="lazy" alt="« Bal du samedi » existe déjà : Remplacer par la version reçue, ou Garder les deux.">
+          <div>
+            <h3>Une modif ? On renvoie</h3>
+            <p>Après un changement, on renvoie le lien. Klik reconnaît le concert et propose de <strong>le remplacer par la version reçue</strong>, ou de garder les deux.</p>
+            <p>Dans <span class="k">⋯</span> du concert, « Revenir à la version précédente » annule le remplacement.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ===================== ENGLISH ===================== -->
+    <div lang="en">
+      <section class="part" id="tempo-en">
+        <div class="num">1</div>
+        <h2>Tempo</h2>
+        <p class="lead">The reference, before every song.</p>
+        <div class="step">
+          <img src="guide/en-01.webp" width="585" height="1266" loading="lazy" alt="Main screen playing: the circle flashes green on beat 1.">
+          <div>
+            <h3>One tap on ▶</h3>
+            <p>Klik gives <strong>the reference tempo</strong>: listen, count in, play.</p>
+            <p>Beat 1 flashes the whole circle. Tapping the number also starts and stops.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-02.webp" width="585" height="1266" loading="lazy" alt="The TAP button slid to the right, the tempo is up to 132.">
+          <div>
+            <h3>Faster, slower</h3>
+            <p>Hold <span class="k">TAP</span> and slide: <strong>right for faster, left for slower</strong>.</p>
+            <p>The further you push, the quicker it changes. In landscape the bar is vertical: slide up to speed up.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-03.webp" width="585" height="1266" loading="lazy" alt="After four taps on TAP, the four dots are lit and the tempo is 104.">
+          <div>
+            <h3>Or tap it</h3>
+            <p>Four taps on <span class="k">TAP</span>, in time: the four dots light up and the tempo is set.</p>
+            <p>Double-tap the number to type the tempo instead.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" id="accents-en">
+        <div class="num">2</div>
+        <h2>Accents</h2>
+        <p class="lead">The song's rhythm, not just the beats.</p>
+        <div class="step">
+          <img src="guide/en-04.webp" width="585" height="1266" loading="lazy" alt="The Dancing Queen pattern: a strong dot every three dots.">
+          <div>
+            <h3>Each dot is a hit</h3>
+            <p>Each dot around the circle is a sixteenth note of the bar. Tap it to change its accent: <strong>none → medium → strong</strong>. Here, the Dancing Queen rhythm.</p>
+            <p>At the top, <span class="k">2/4 · 3/4 · 4/4 · 6/8</span>: picking a time signature resets the pattern to the beats only.</p>
+            <ul class="legend">
+              <li><i class="dn"></i>Beat 1 (low)</li>
+              <li><i class="st"></i>Strong</li>
+              <li><i class="md"></i>Medium</li>
+              <li><i class="no"></i>None</li>
+            </ul>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-05.webp" width="585" height="1266" loading="lazy" alt="Sound off: the speaker icon is crossed out, the circle still flashes.">
+          <div>
+            <h3>Muted? It still flashes</h3>
+            <p><span class="k">🔊</span> mutes the sound. <strong>The flash keeps going</strong>: you see the tempo without hearing it.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" id="setlist-en">
+        <div class="num">3</div>
+        <h2>Your setlist</h2>
+        <p class="lead">The songs of the gig, in order.</p>
+        <div class="step">
+          <img src="guide/en-06.webp" width="585" height="1266" loading="lazy" alt="The empty gig list, with the New gig and Paste buttons.">
+          <div>
+            <h3>A gig</h3>
+            <p><span class="k">☰</span> opens the list. “New gig”, a name, done.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-07.webp" width="585" height="1266" loading="lazy" alt="The Save setting form, with the name Dancing Queen and tempo 104.">
+          <div>
+            <h3>Save the setting</h3>
+            <p>“+ Save current setting”: tempo, time signature and rhythm become a song of the gig.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-08.webp" width="585" height="1266" loading="lazy" alt="The gig Saturday dance with three songs: Johnny B. Goode, Dancing Queen, Osez Joséphine.">
+          <div>
+            <h3>In order</h3>
+            <p>Drag <span class="k">≡</span> to reorder. <span class="k">⋯</span> to rename a song, change its tempo, copy or delete it.</p>
+            <p>A song received as a link is added with “Paste”.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-09.webp" width="585" height="1266" loading="lazy" alt="Main screen with the title Dancing Queen between the previous and next arrows.">
+          <div>
+            <h3>On stage</h3>
+            <p>Tap a song, then <span class="k">‹ ›</span> for the previous or next one: <strong>tempo and rhythm change in one tap</strong>, even while playing.</p>
+            <p>Tapping the title opens the list again.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="part" id="partage-en">
+        <div class="num">4</div>
+        <h2>Sharing</h2>
+        <p class="lead">The setlist for the whole band.</p>
+        <div class="step">
+          <img src="guide/en-10.webp" width="585" height="1266" loading="lazy" alt="The Share sheet: Send link, Copy link, Copy JSON.">
+          <div>
+            <h3>The whole gig in one link</h3>
+            <p>“Share”, then “Send link…”: by WhatsApp, text message or email. “Copy link” puts it on the clipboard.</p>
+            <p>The whole setlist is inside the link: <strong>no account, no server</strong>.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-11.webp" width="585" height="1266" loading="lazy" alt="On the drummer's phone: Import “Saturday dance”? 3 songs.">
+          <div>
+            <h3>The band opens it</h3>
+            <p>They tap the link and Klik offers to import the gig. It then works offline.</p>
+            <p>On iPhone, a link opens in Safari, not in the app installed on the home screen: better copy the link and tap “Paste” in the app.</p>
+          </div>
+        </div>
+        <div class="step">
+          <img src="guide/en-12.webp" width="585" height="1266" loading="lazy" alt="“Saturday dance” already exists: Replace with received version, or Keep both.">
+          <div>
+            <h3>A change? Send it again</h3>
+            <p>After a change, send the link again. Klik recognises the gig and offers to <strong>replace it with the received version</strong>, or to keep both.</p>
+            <p>In the gig's <span class="k">⋯</span> menu, “Restore previous version” undoes the replacement.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <span lang="fr">Klik · gratuit, hors-ligne, s'installe sur l'écran d'accueil · <a href="./">klik.lonoize.com</a></span>
+    <span lang="en">Klik · free, offline, installs on the home screen · <a href="./">klik.lonoize.com</a></span>
+  </footer>
+
+  <script>
+    // Sommaire anglais : les ancres pointent vers les sections anglaises.
+    if (document.documentElement.lang === 'en') {
+      document.querySelectorAll('nav.toc[lang="en"] a').forEach(a => { a.hash = a.hash + '-en'; });
+    }
+  </script>
+</body>
+</html>

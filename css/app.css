@@ -510,6 +510,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .save-current span { font-size: 13px; color: var(--text-secondary); word-break: break-all; }
 .empty { color: var(--text-secondary); line-height: 1.5; max-width: 40ch; }
 .version { margin-top: 32px; font-size: 12px; color: var(--text-secondary); letter-spacing: .08em; }
+.empty p { margin: 0 0 12px; }
+.guide-link { color: var(--accent); text-underline-offset: 3px; }
+.version .guide-link { font-size: 14px; letter-spacing: 0; }
 
 .btn {
   min-height: 52px;
