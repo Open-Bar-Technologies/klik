@@ -556,6 +556,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   text-wrap: balance;
 }
 .sheet-text { margin: 0; color: var(--text-secondary); line-height: 1.5; }
+.sheet-text p { margin: 0 0 6px; }
+.sheet-text .warn { color: var(--danger); font-weight: 600; }
 .sheet-actions { display: flex; flex-direction: column; gap: 10px; }
 .sheet-form { display: flex; flex-direction: column; gap: 14px; }
 .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-secondary); }

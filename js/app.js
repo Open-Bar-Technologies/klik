@@ -45,7 +45,14 @@
     for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
     return el;
   }
-  const persist = () => S.save(data);
+  // Avant chaque sauvegarde : un concert dont le contenu a changé reçoit une nouvelle date de modification.
+  function persist() {
+    for (const c of data.concerts) {
+      const fp = S.fingerprint(c);
+      if (c.fp !== fp) { c.fp = fp; c.updatedAt = new Date().toISOString(); }
+    }
+    S.save(data);
+  }
   const concertById = id => data.concerts.find(c => c.id === id) || null;
   const currentConcert = () => concertById(cur.concertId);
   const currentSong = () => {
@@ -476,7 +483,7 @@
   ui.sheet.addEventListener('click', e => { if (e.target === ui.sheet) closeSheet(); });
 
   function menu(title, items) {
-    openSheet(title, null, [...items, { label: t('cancel'), run: closeSheet }]);
+    openSheet(title, null, [...items.filter(Boolean), { label: t('cancel'), run: closeSheet }]);
   }
 
   function form(title, fields, submitLabel, onSubmit) {
@@ -530,6 +537,14 @@
       }) },
       { label: t('share'), run: () => shareSheet(S.exportConcert(c), c.name) },
       { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportConcert(c)); } },
+      data.previous && data.previous.concert.id === c.id ? { label: t('restorePrevious'), run: () => {
+        closeSheet();
+        const prev = data.previous.concert;
+        replaceConcert(c, prev);
+        persist();
+        showConcert(prev.id);
+        toast(t('restored'));
+      } } : null,
       { label: t('delete'), kind: 'danger', run: () => confirmDelete(q(c.name), () => {
         data.concerts = data.concerts.filter(x => x !== c);
         if (cur.concertId === c.id) { cur.concertId = null; cur.songId = null; cur.dirty = false; renderSong(); }
@@ -631,10 +646,10 @@
     const actions = [];
     if (navigator.share) {
       actions.push({ label: t('shareSend'), kind: 'primary', run: async () => {
-        try { await navigator.share({ title: 'Klik', text, url }); closeSheet(); } catch (e) { /* partage annulé */ }
+        try { await navigator.share({ title: text, url }); closeSheet(); } catch (e) { /* partage annulé */ }
       } });
     }
-    actions.push({ label: t('shareCopyLink'), kind: navigator.share ? '' : 'primary', run: () => { closeSheet(); copyText(`${text}\n${url}`, t('linkCopied'), t('shareCopyLink')); } });
+    actions.push({ label: t('shareCopyLink'), kind: navigator.share ? '' : 'primary', run: () => { closeSheet(); copyText(url, t('linkCopied'), t('shareCopyLink')); } });
     actions.push({ label: t('copyJson'), run: () => { closeSheet(); copyJson(obj); } });
     actions.push({ label: t('cancel'), run: closeSheet });
     openSheet(t('shareTitle', { name }), h('p', { class: 'sheet-text' }, t('shareHint')), actions);
@@ -646,8 +661,66 @@
     return S.parse(token ? await S.decodeShare(token) : text);
   }
 
+  function showConcert(id) {
+    libView = { name: 'concert', concertId: id };
+    ui.lib.hidden = false;
+    renderLib();
+  }
+
+  const formatDate = iso => iso
+    ? new Date(iso).toLocaleString(K.i18n.lang, { dateStyle: 'short', timeStyle: 'short' })
+    : t('unknownDate');
+
+  // Remplace un concert par une autre version, en gardant l'ancienne pour pouvoir revenir en arrière.
+  function replaceConcert(local, incoming) {
+    data.previous = { concert: JSON.parse(JSON.stringify(local)) };
+    data.concerts[data.concerts.indexOf(local)] = incoming;
+    if (cur.concertId === incoming.id) {
+      const old = local.songs.find(s => s.id === cur.songId);
+      const match = old && incoming.songs.find(s => s.name === old.name);
+      cur.songId = match ? match.id : null;
+      renderSong();
+    }
+  }
+
+  function updateSheet(local, incoming) {
+    if (S.fingerprint(local) === incoming.fp) {
+      toast(t('alreadyUpToDate', { name: local.name }));
+      showConcert(local.id);
+      return;
+    }
+    const older = local.updatedAt && incoming.updatedAt && incoming.updatedAt < local.updatedAt;
+    openSheet(t('concertExists', { name: local.name }), h('div', { class: 'sheet-text' },
+      h('p', {}, t('versionYours', { songs: t('songCount', local.songs.length), date: formatDate(local.updatedAt) })),
+      h('p', {}, t('versionReceived', { songs: t('songCount', incoming.songs.length), date: formatDate(incoming.updatedAt) })),
+      older ? h('p', { class: 'warn' }, t('receivedOlder')) : null,
+    ), [
+      { label: t('updateConcert'), kind: older ? 'danger' : 'primary', run: () => {
+        closeSheet();
+        replaceConcert(local, incoming);
+        persist();
+        showConcert(incoming.id);
+        toast(t('concertUpdated', { name: incoming.name }));
+      } },
+      { label: t('keepBoth'), run: () => {
+        closeSheet();
+        incoming.id = S.uid();
+        data.concerts.push(incoming);
+        persist();
+        showConcert(incoming.id);
+        toast(t('concertImported', { name: incoming.name }));
+      } },
+      { label: t('cancel'), run: closeSheet },
+    ]);
+  }
+
   function applyImport(r) {
     if (r.type === 'concert') {
+      // L'empreinte est posée avant la sauvegarde : la date de modification reçue est conservée.
+      r.concert.fp = S.fingerprint(r.concert);
+      if (!r.concert.updatedAt) r.concert.updatedAt = new Date().toISOString();
+      const existing = data.concerts.find(c => c.id === r.concert.id);
+      if (existing) { updateSheet(existing, r.concert); return; }
       data.concerts.push(r.concert);
       libView = { name: 'concert', concertId: r.concert.id };
       toast(t('concertImported', { name: r.concert.name }));
@@ -677,7 +750,10 @@
     const err = h('p', { class: 'form-error', role: 'alert' }, error || '');
     openSheet(t('pasteTitle'), h('div', {}, ta, err), [
       { label: t('import'), kind: 'primary', run: async () => {
-        try { applyImport(await parseImport(ta.value)); closeSheet(); } catch (e) { err.textContent = e.message; }
+        let r;
+        try { r = await parseImport(ta.value); } catch (e) { err.textContent = e.message; return; }
+        closeSheet();
+        try { applyImport(r); } catch (e) { toast(e.message); }
       } },
       { label: t('cancel'), run: closeSheet },
     ]);
@@ -691,6 +767,8 @@
     history.replaceState(null, '', location.pathname + location.search);
     let r;
     try { r = S.parse(await S.decodeShare(token)); } catch (e) { toast(e.message); return; }
+    // Concert déjà présent : on passe directement au choix de mise à jour.
+    if (r.type === 'concert' && data.concerts.some(c => c.id === r.concert.id)) { applyImport(r); return; }
     const name = r.type === 'concert' ? r.concert.name : r.song.name;
     const detail = r.type === 'concert'
       ? t('songCount', r.concert.songs.length)
@@ -791,6 +869,12 @@
   if (window.visualViewport) window.visualViewport.addEventListener('resize', resetScroll);
 
   K.i18n.applyStatic(document);
+  // Concerts créés avant les dates de modification : on les date d'aujourd'hui.
+  for (const c of data.concerts) {
+    if (!c.fp) c.fp = S.fingerprint(c);
+    if (!c.updatedAt) c.updatedAt = new Date().toISOString();
+  }
+
   readColors();
   renderAll();
   importFromLink();

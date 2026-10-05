@@ -4,7 +4,7 @@
 // l'active avec le bandeau « Mettre à jour ».
 //
 // SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
-const VERSION = '0.9.0';
+const VERSION = '0.10.0';
 
 const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';
@@ -21,6 +21,7 @@ const ASSETS = [
   'icons/icon-192.png',
   'icons/icon-512.png',
   'icons/apple-touch-icon.png',
+  'icons/favicon-32.png',
 ];
 
 self.addEventListener('install', event => {

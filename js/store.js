@@ -142,11 +142,16 @@
     return `${Number(m[1] || 0) * 60 + Number(m[2])}:${m[3]}`;
   }
 
+  // L'identifiant d'un concert voyage avec lui : un concert reçu qui porte le même id qu'un
+  // concert local est une nouvelle version de celui-ci (mise à jour proposée, pas de doublon).
+  const validId = id => typeof id === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(id);
+  const validDate = d => typeof d === 'string' && !Number.isNaN(Date.parse(d));
+
   function normConcert(raw, keepId) {
     if (!raw || typeof raw !== 'object') fail(t('errConcert'));
     if (!Array.isArray(raw.songs)) fail(t('errSongs'));
-    return {
-      id: keepId && raw.id ? String(raw.id) : uid(),
+    const c = {
+      id: validId(raw.id) || (keepId && raw.id) ? String(raw.id) : uid(),
       name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || t('untitledConcert'),
       songs: raw.songs.map((s, i) => {
         try { return normSong(s, keepId); } catch (e) {
@@ -155,6 +160,18 @@
         }
       }),
     };
+    if (validDate(raw.updatedAt)) c.updatedAt = new Date(raw.updatedAt).toISOString();
+    if (keepId && typeof raw.fp === 'string') c.fp = raw.fp;
+    return c;
+  }
+
+  // Empreinte du contenu (nom + morceaux) : sert à dater les modifications et à repérer
+  // une version reçue identique à la version locale.
+  function fingerprint(c) {
+    const text = JSON.stringify({ name: c.name, songs: c.songs.map(s => exportSong(s, false)) });
+    let h = 5381;
+    for (let i = 0; i < text.length; i++) h = ((h << 5) + h + text.charCodeAt(i)) | 0;
+    return (h >>> 0).toString(36) + text.length.toString(36);
   }
 
   /* ---------- export / import ---------- */
@@ -177,7 +194,12 @@
     if (song.extra) for (const [k, v] of Object.entries(song.extra)) if (!(k in out)) out[k] = v;
     return out;
   }
-  const exportConcert = c => ({ klik: FORMAT, type: 'concert', name: c.name, songs: c.songs.map(s => exportSong(s, false)) });
+  const exportConcert = c => {
+    const out = { klik: FORMAT, type: 'concert', id: c.id, name: c.name };
+    if (c.updatedAt) out.updatedAt = c.updatedAt;
+    out.songs = c.songs.map(s => exportSong(s, false));
+    return out;
+  };
   const stringify = obj => JSON.stringify(obj, null, 2);
 
   // Format 1 : « 4/4 » valait 8 croches. On double la résolution (1 croche = 2 doubles-croches).
@@ -311,7 +333,11 @@
       const p = presetFor('4/4');
       current = { tempo: 120, signature: { ...p }, pattern: defaultPattern(p), concertId: null, songId: null, dirty: false };
     }
-    return { schema: SCHEMA, muted: !!d.muted, current, concerts };
+    const out = { schema: SCHEMA, muted: !!d.muted, current, concerts };
+    if (d.previous && d.previous.concert) {
+      try { out.previous = { concert: normConcert(d.previous.concert, true) }; } catch (e) { /* ignorée */ }
+    }
+    return out;
   }
 
   function load() {
@@ -390,7 +416,7 @@
   K.store = {
     PRESETS, MIN_TEMPO, MAX_TEMPO, FormatError,
     uid, clampTempo, isPreset, defaultPattern, levels, setLevel,
-    normSong, exportSong, exportConcert, stringify, parse,
+    normSong, exportSong, exportConcert, stringify, parse, fingerprint,
     load, save,
     encodeShare, decodeShare, shareToken,
   };

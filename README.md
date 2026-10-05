@@ -37,6 +37,12 @@ L'interface est en français ou en anglais selon la langue du navigateur.
 3. Les données locales ont leur propre numéro de schéma (`SCHEMA` dans `js/store.js`). Si leur structure change, il faut incrémenter `SCHEMA` et ajouter une entrée dans `migrations`. Une version plus ancienne de l'app ne réécrit jamais des données plus récentes : elle les met de côté.
 4. Le format d'échange JSON a son propre numéro (`klik` dans le JSON, `FORMAT` dans `js/store.js`).
 
+## Icône et aperçu des liens
+
+- `icons/icon.svg` est la source de l'icône. Les PNG (`icon-192`, `icon-512`, `apple-touch-icon`, `favicon-32`) en sont tirés.
+- `icons/og.png` (1200×630) est l'image d'aperçu affichée quand on colle l'adresse de Klik dans une messagerie.
+- La balise `og:image` de `index.html` est relative. WhatsApp et Facebook exigent une adresse complète : il faut la remplacer par l'URL définitive du site (par exemple `https://klik.mon-domaine.fr/icons/og.png`).
+
 ## Déploiement sur GitHub Pages
 
 Dans **Settings → Pages**, choisir **Deploy from a branch**, branche `main`, dossier `/ (root)`.

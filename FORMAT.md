@@ -115,7 +115,18 @@ Un concert est une liste ordonnée de morceaux, sans `klik` ni `type` sur chaque
 }
 ```
 
-Coller un concert crée un nouveau dossier. Coller un morceau l'ajoute à la fin du concert ouvert.
+Klik ajoute deux champs facultatifs aux concerts qu'il exporte :
+
+| Champ       | Description |
+| ----------- | ----------- |
+| `id`        | Identifiant unique du concert (8 à 64 caractères : lettres, chiffres, `-`, `_`). Il voyage avec le concert. |
+| `updatedAt` | Date de dernière modification (ISO 8601), mise à jour automatiquement. |
+
+Coller un concert **sans `id` connu** crée un nouveau dossier. Coller un concert dont l'`id` existe
+déjà propose de **remplacer** la version locale (les deux dates sont affichées, avec un avertissement
+si la version reçue est plus ancienne), de **garder les deux** ou d'annuler. Après un remplacement,
+« Revenir à la version précédente » dans le menu ⋯ du concert annule l'opération.
+Coller un morceau l'ajoute à la fin du concert ouvert.
 Les copies sont indépendantes : modifier un morceau dans un concert ne change pas les autres.
 
 ## Évolution du format
