@@ -73,11 +73,22 @@
     return 'X' + raw.slice(1);
   }
 
+  // Signature absente : on la déduit de la longueur du motif.
+  // 8 → 2/4, 16 → 4/4, 12 → 6/8 si le point 7 (milieu) est fort et que les points 5 et 9
+  // (temps 2 et 3 du 3/4) ne le sont pas, sinon 3/4. Sans motif : 4/4.
+  function guessSignature(pattern) {
+    if (typeof pattern !== 'string') return '4/4';
+    if (pattern.length === 8) return '2/4';
+    if (pattern.length === 16) return '4/4';
+    if (pattern.length === 12) return pattern[6] === 'X' && pattern[4] !== 'X' && pattern[8] !== 'X' ? '6/8' : '3/4';
+    fail(t('errGuessSignature', { length: pattern.length }));
+  }
+
   function normSong(raw, keepId) {
     if (!raw || typeof raw !== 'object') fail(t('errSong'));
     const tempo = Number(raw.tempo);
     if (!Number.isFinite(tempo)) fail(t('errTempo'));
-    const signature = normSignature(raw.signature == null ? '4/4' : raw.signature);
+    const signature = normSignature(raw.signature == null ? guessSignature(raw.pattern) : raw.signature);
     const song = {
       id: keepId && raw.id ? String(raw.id) : uid(),
       name: String(raw.name == null ? '' : raw.name).trim().slice(0, 80) || t('untitledSong'),
@@ -141,7 +152,11 @@
     let obj;
     try { obj = JSON.parse(String(text).trim()); } catch (e) { fail(t('errNotJson')); }
     if (!obj || typeof obj !== 'object' || Array.isArray(obj)) fail(t('errNotObject'));
-    if (obj.klik == null) fail(t('errNoKlik'));
+    // Forme courte : sans « klik » ni « type », on reconnaît un morceau à son tempo
+    // et un concert à sa liste de morceaux.
+    if (obj.type == null) obj.type = Array.isArray(obj.songs) ? 'concert' : obj.tempo != null ? 'song' : null;
+    if (obj.type == null) fail(t('errNoKlik'));
+    if (obj.klik == null) obj.klik = FORMAT;
     if (Number(obj.klik) > FORMAT) fail(t('errNewer'));
     if (Number(obj.klik) === 1) {
       if (obj.type === 'song') upgradeOld44(obj);
