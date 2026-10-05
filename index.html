@@ -38,7 +38,8 @@
         <div class="points" id="points"></div>
         <div class="disc" id="disc">
           <button class="mute" id="mute" type="button">🔊</button>
-          <button class="bpm" id="bpm" type="button" aria-label="Lancer ou arrêter">120</button>
+          <button class="bpm" id="bpm" type="button" aria-label="Tempo. Toucher pour lancer ou arrêter, toucher deux fois pour saisir.">120</button>
+          <input class="bpm-input" id="bpmInput" type="number" inputmode="numeric" min="30" max="300" aria-label="Saisir le tempo" hidden>
           <button class="play" id="play" type="button" aria-label="Lancer"><span class="play-icon" aria-hidden="true"></span></button>
         </div>
       </div>

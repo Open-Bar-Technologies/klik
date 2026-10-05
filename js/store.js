@@ -3,7 +3,7 @@
   'use strict';
 
   const KEY = 'klik.data';
-  const SCHEMA = 2;   // version du stockage local (migrations ci-dessous)
+  const SCHEMA = 3;   // version du stockage local (migrations ci-dessous)
   const FORMAT = 2;   // version du JSON d'échange (champ "klik")
   const MIN_TEMPO = 30;
   const MAX_TEMPO = 300;
@@ -165,18 +165,18 @@
     });
   }
 
-  // Clave sur 2 mesures de 4/4 en croches : 16 points, BPM à la noire.
-  const CLAVE = { label: 'clave', steps: 16, stepsPerBeat: 2 };
+  // Les claves (2 mesures) sont écrites sur une mesure de 4/4 en doubles-croches :
+  // même motif, tempo à la blanche de la version « 2 mesures ».
   const LATIN_NAME = 'Rythmes latinos';
   function latinConcert() {
     return normConcert({
       name: LATIN_NAME,
       songs: [
-        { name: 'Salsa · clave de son 3-2', tempo: 190, signature: CLAVE, pattern: 'X..X..X...X.X...' },
-        { name: 'Rumba · clave rumba 3-2', tempo: 170, signature: CLAVE, pattern: 'X..X...X..X.X...' },
+        { name: 'Salsa · clave de son 3-2', tempo: 95, signature: '4/4', pattern: 'X..X..X...X.X...' },
+        { name: 'Rumba · clave rumba 3-2', tempo: 85, signature: '4/4', pattern: 'X..X...X..X.X...' },
         { name: 'Samba · grosse caisse', tempo: 100, signature: '2/4', pattern: 'X..xX..x' },
         { name: 'Cha-cha-cha', tempo: 120, signature: '4/4', pattern: 'X...X...X...X.x.' },
-        { name: 'Bossa nova', tempo: 130, signature: CLAVE, pattern: 'X..X..X...X..X..' },
+        { name: 'Bossa nova', tempo: 65, signature: '4/4', pattern: 'X..X..X...X..X..' },
       ],
     });
   }
@@ -206,6 +206,19 @@
       up(d.current);
       if (!d.concerts.some(c => c.name === LATIN_NAME)) d.concerts.push(latinConcert());
       d.schema = 2;
+      return d;
+    },
+    // 2 → 3 : les claves passent de la grille « clave » (2 mesures en croches) au 4/4, tempo divisé par 2.
+    2: d => {
+      const up = s => {
+        const g = s && s.signature;
+        if (!g || g.label !== 'clave' || g.steps !== 16 || g.stepsPerBeat !== 2) return;
+        s.signature = { label: '4/4', steps: 16, stepsPerBeat: 4 };
+        s.tempo = clampTempo((Number(s.tempo) || 120) / 2);
+      };
+      (d.concerts || []).forEach(c => (c.songs || []).forEach(up));
+      up(d.current);
+      d.schema = 3;
       return d;
     },
   };

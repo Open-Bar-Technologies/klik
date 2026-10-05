@@ -71,7 +71,10 @@
     drain() {
       const out = [];
       if (!ctx) return out;
-      const now = ctx.currentTime;
+      // Le son sort du haut-parleur avec un retard (tampon audio, Bluetooth) :
+      // on retarde d'autant le flash pour qu'il tombe en même temps que le clic entendu.
+      const latency = (ctx.outputLatency || 0) + (ctx.baseLatency || 0);
+      const now = ctx.currentTime - latency;
       while (queue.length && queue[0].time <= now) out.push(queue.shift());
       return out;
     },

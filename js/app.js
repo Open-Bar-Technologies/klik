@@ -22,7 +22,7 @@
     sigs: $('#sigs'), openLib: $('#openLibrary'),
     song: $('#song'), prev: $('#prev'), next: $('#next'), title: $('#songTitle'),
     center: $('#center'), ring: $('#ring'), disc: $('#disc'), points: $('#points'),
-    mute: $('#mute'), bpm: $('#bpm'), play: $('#play'),
+    mute: $('#mute'), bpm: $('#bpm'), bpmInput: $('#bpmInput'), play: $('#play'),
     track: $('#track'), knob: $('#tap'), tapDots: $('#tapDots'),
     lib: $('#lib'), libTitle: $('#libTitle'), libBack: $('#libBack'), libClose: $('#libClose'),
     libBody: $('#libBody'), libFoot: $('#libFoot'),
@@ -646,7 +646,37 @@
 
   /* ---------- liaisons ---------- */
 
-  ui.bpm.addEventListener('click', toggle);
+  // Un toucher lance ou arrête, deux touchers rapprochés ouvrent la saisie du tempo.
+  let bpmTapTimer = null;
+  ui.bpm.addEventListener('click', () => {
+    if (bpmTapTimer) {
+      clearTimeout(bpmTapTimer);
+      bpmTapTimer = null;
+      editTempo();
+      return;
+    }
+    bpmTapTimer = setTimeout(() => { bpmTapTimer = null; toggle(); }, 280);
+  });
+
+  function editTempo() {
+    ui.bpmInput.value = cur.tempo;
+    ui.bpm.hidden = true;
+    ui.bpmInput.hidden = false;
+    ui.bpmInput.focus();
+    ui.bpmInput.select();
+  }
+  function closeTempoEdit(commit) {
+    if (ui.bpmInput.hidden) return;
+    const v = Number(ui.bpmInput.value);
+    ui.bpmInput.hidden = true;
+    ui.bpm.hidden = false;
+    if (commit && ui.bpmInput.value !== '' && Number.isFinite(v)) setTempo(v);
+  }
+  ui.bpmInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); closeTempoEdit(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeTempoEdit(false); }
+  });
+  ui.bpmInput.addEventListener('blur', () => closeTempoEdit(true));
   ui.play.addEventListener('click', toggle);
   ui.mute.addEventListener('click', () => { data.muted = !data.muted; renderMute(); persist(); });
   ui.points.addEventListener('click', e => {
@@ -678,10 +708,15 @@
   darkScheme.addEventListener('change', readColors);
 
   // Taille du cercle : le plus grand carré qui tient sous le titre.
+  // Taille du cercle : le plus grand carré possible. En paysage, s'il reste assez de place
+  // à côté du cercle, le titre y passe et le cercle prend toute la hauteur.
   new ResizeObserver(() => {
     const r = ui.center.getBoundingClientRect();
-    const size = Math.max(180, Math.min(r.width, r.height - ui.song.offsetHeight - 8, 600));
-    ui.ring.style.setProperty('--ring', `${Math.floor(size)}px`);
+    const full = Math.min(r.width, r.height);
+    const side = landscape.matches && (r.width - full) / 2 >= 110;
+    ui.center.classList.toggle('side-title', side);
+    const size = side ? full : Math.min(r.width, r.height - ui.song.offsetHeight - 8);
+    ui.center.style.setProperty('--ring', `${Math.floor(Math.max(180, Math.min(size, 720)))}px`);
   }).observe(ui.center);
 
   readColors();
@@ -707,9 +742,11 @@
         if (document.visibilityState === 'visible') reg.update().catch(() => {});
       });
     }).catch(() => {});
+    // Premier lancement : le service worker prend la main sans qu'il y ait de mise à jour à charger.
+    const hadController = !!navigator.serviceWorker.controller;
     let reloading = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading) return;
+      if (reloading || !hadController) return;
       reloading = true;
       location.reload();
     });

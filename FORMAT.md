@@ -42,6 +42,14 @@ Chaque objet commence par deux champs :
 | `4/4`     | 16     | double-croche    | la noire         |
 | `6/8`     | 12     | double-croche    | la noire pointée |
 
+Une clave (motif sur 2 mesures) s'écrit sur une mesure de 4/4 : même motif, tempo divisé par 2.
+Par exemple une salsa à 190 à la noire devient :
+
+```json
+{ "klik": 2, "type": "song", "name": "Salsa · clave de son 3-2", "tempo": 95,
+  "signature": "4/4", "pattern": "X..X..X...X.X..." }
+```
+
 ### Signature personnalisée
 
 N'importe quelle grille peut être collée sous forme d'objet :
@@ -53,14 +61,6 @@ N'importe quelle grille peut être collée sous forme d'objet :
 - `label` : texte affiché (8 caractères max) ;
 - `steps` : nombre de points dans la mesure (2 à 32) ;
 - `stepsPerBeat` : nombre de points par temps, c'est-à-dire par battement du BPM.
-
-Exemple, une clave sur deux mesures de 4/4 en croches (16 points, BPM à la noire) :
-
-```json
-{ "klik": 2, "type": "song", "name": "Salsa · clave de son 3-2", "tempo": 190,
-  "signature": { "label": "clave", "steps": 16, "stepsPerBeat": 2 },
-  "pattern": "X..X..X...X.X..." }
-```
 
 Exemple, un shuffle boogie (4 temps ternaires, 3 points par temps) :
 

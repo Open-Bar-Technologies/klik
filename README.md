@@ -5,7 +5,7 @@ Klik est une PWA : elle s'installe sur l'écran d'accueil et fonctionne sans ré
 
 ## Utilisation
 
-- **Cercle central** : toucher le tempo ou ▶ lance et arrête. 🔊 coupe le son, mais le flash visuel continue.
+- **Cercle central** : toucher le tempo ou ▶ lance et arrête. Toucher deux fois le tempo permet de le saisir au clavier. 🔊 coupe le son, mais le flash visuel continue.
 - **Points autour du cercle** : une mesure complète. Toucher un point le fait passer de rien à moyen, puis à fort, puis de nouveau à rien. Le losange du haut est le temps 1 : il fait flasher tout le cercle.
 - **Signatures** : 2/4, 3/4, 4/4, 6/8. Choisir une signature remet le motif à « temps forts + croches ».
 - **Barre de tempo** :

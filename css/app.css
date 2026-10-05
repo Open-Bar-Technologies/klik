@@ -79,6 +79,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   height: 100%;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   padding:
     max(12px, env(safe-area-inset-top))
@@ -107,6 +108,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .chip:active, .square:active { background: var(--surface-1); }
 
 .center {
+  --ring: 320px;
+  position: relative;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -152,9 +155,8 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .title-text.muted { color: var(--text-secondary); }
 .dirty { color: var(--accent); }
 
-/* Cercle : --ring est posé en JS (le plus grand carré disponible). */
+/* Cercle : --ring est posé en JS sur .center (le plus grand carré disponible). */
 .ring {
-  --ring: 320px;
   position: relative;
   width: var(--ring);
   height: var(--ring);
@@ -162,59 +164,70 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 }
 .disc {
   position: absolute;
-  inset: 15%;
+  inset: 13%;
   border-radius: 50%;
   border: 3px solid var(--border-strong);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
+  display: grid;
+  place-items: center;
 }
-.mute {
-  width: 44px;
-  height: 40px;
+/* Haut-parleur et lecture collés aux bords du disque, loin du chiffre. */
+.mute, .play {
+  position: absolute;
+  left: 50%;
+  width: 60px;
+  height: 52px;
+  margin-left: -30px;
   border: 0;
   background: none;
-  font-size: 22px;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+.mute { top: 5%; font-size: max(22px, calc(var(--ring) * .065)); line-height: 1; }
+.play { bottom: 5%; }
+.bpm, .bpm-input {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: max(80px, calc(var(--ring) * .39));
+  line-height: .82;
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+  color: inherit;
 }
 .bpm {
   border: 0;
   background: none;
   padding: 0;
-  font-family: var(--font-display);
-  font-weight: 900;
-  font-size: max(72px, calc(var(--ring) * .34));
-  line-height: .82;
-  letter-spacing: -.01em;
-  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
 }
-.play {
-  width: 52px;
-  height: 52px;
-  margin-top: 6px;
-  border-radius: 50%;
-  border: 2px solid currentColor;
+.bpm-input {
+  width: 2.6em;
+  padding: 0;
+  border: 0;
+  border-bottom: 4px solid var(--accent);
+  border-radius: 0;
   background: none;
-  display: grid;
-  place-items: center;
+  text-align: center;
+  -moz-appearance: textfield;
+  -webkit-user-select: text;
+  user-select: text;
 }
+.bpm-input::-webkit-inner-spin-button, .bpm-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.bpm-input:focus-visible { outline: none; }
 .play-icon {
   width: 0;
   height: 0;
-  margin-left: 4px;
+  margin-left: 5px;
   border-style: solid;
-  border-width: 10px 0 10px 16px;
+  border-width: 14px 0 14px 23px;
   border-color: transparent transparent transparent currentColor;
 }
 .play.is-playing .play-icon {
-  width: 16px;
-  height: 16px;
+  width: 22px;
+  height: 22px;
   margin: 0;
   border: 0;
   background: currentColor;
-  border-radius: 2px;
+  border-radius: 3px;
 }
 
 /* Points de subdivision autour du cercle. */
@@ -231,7 +244,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   background: none;
   display: grid;
   place-items: center;
-  transform: rotate(var(--a)) translateY(calc(var(--ring) * -.435));
+  transform: rotate(var(--a)) translateY(calc(var(--ring) * -.44));
 }
 .dot {
   width: 10px;
@@ -318,7 +331,23 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   .sigs { flex-direction: column; flex: none; }
   .chip { flex: none; height: 52px; }
   .square { width: 76px; height: 52px; }
-  .song { max-width: 440px; }
+  /* Titre dans l'espace libre à gauche du cercle, pour que le cercle prenne toute la hauteur. */
+  .center.side-title .song {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: calc((100% - var(--ring)) / 2 - 8px);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas: "title title" "prev next";
+    align-content: center;
+    row-gap: 4px;
+  }
+  .center.side-title .title { grid-area: title; height: auto; min-height: 44px; font-size: 22px; }
+  .center.side-title .title-text { white-space: normal; text-align: center; overflow-wrap: anywhere; }
+  .center.side-title #prev { grid-area: prev; justify-self: center; }
+  .center.side-title #next { grid-area: next; justify-self: center; }
   .slider { height: auto; width: 76px; }
   .track { flex-direction: column-reverse; padding: 22px 0; }
   .mark { transform: rotate(-90deg); }
