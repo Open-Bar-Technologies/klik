@@ -1,14 +1,16 @@
 // Service worker : l'app fonctionne hors-ligne (salle de concert sans réseau).
-// Le cache porte le numéro de version.js : changer la version installe la nouvelle app
-// en arrière-plan, puis l'utilisateur la active via le bandeau « Mettre à jour ».
-importScripts('version.js');
+// Le cache porte le numéro de version : changer VERSION modifie ce fichier, ce que tous les
+// navigateurs détectent. La nouvelle app s'installe en arrière-plan, puis l'utilisateur
+// l'active avec le bandeau « Mettre à jour ».
+//
+// SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
+const VERSION = '0.9.0';
 
-const CACHE = 'klik-' + self.KLIK_VERSION;
+const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';
 const ASSETS = [
   './',
   'index.html',
-  'version.js',
   'css/app.css',
   'js/i18n.js',
   'js/store.js',
@@ -37,6 +39,7 @@ self.addEventListener('activate', event => {
 
 self.addEventListener('message', event => {
   if (event.data === 'skipWaiting') self.skipWaiting();
+  if (event.data === 'version' && event.source) event.source.postMessage({ version: VERSION });
 });
 
 self.addEventListener('fetch', event => {

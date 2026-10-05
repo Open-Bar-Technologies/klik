@@ -6,7 +6,7 @@
   const t = K.i18n.t;
   const q = text => t('quoted', { text });
   const E = K.engine;
-  const VERSION = self.KLIK_VERSION || 'dev';
+  let version = '';   // fourni par le service worker (source unique : sw.js)
 
   const data = S.load();
   const cur = data.current;
@@ -382,7 +382,7 @@
     ));
     ui.libBody.replaceChildren(
       rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('noConcerts')),
-      h('p', { class: 'version' }, `Klik ${VERSION}`),
+      h('p', { class: 'version' }, version ? `Klik ${version}` : 'Klik'),
     );
     ui.libFoot.replaceChildren(
       footButton(t('newConcert'), newConcert, 'primary'),
@@ -800,10 +800,24 @@
   /* ---------- PWA : service worker et mises à jour ---------- */
 
   if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
-    navigator.serviceWorker.register('sw.js').then(reg => {
+    let reloading = false;
+    const reload = () => {
+      if (reloading) return;
+      reloading = true;
+      location.reload();
+    };
+    // updateViaCache: 'none' : le navigateur vérifie toujours sw.js sur le serveur, jamais dans son cache.
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(reg => {
       const offer = worker => {
         ui.update.hidden = false;
-        ui.update.onclick = () => worker.postMessage('skipWaiting');
+        ui.update.onclick = () => {
+          // On masque le bandeau tout de suite, on active la nouvelle version, puis on recharge
+          // dès qu'elle est active (ou au bout de 3 s si le navigateur ne le signale pas).
+          ui.update.hidden = true;
+          worker.addEventListener('statechange', () => { if (worker.state === 'activated') reload(); });
+          worker.postMessage('skipWaiting');
+          setTimeout(reload, 3000);
+        };
       };
       if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
       reg.addEventListener('updatefound', () => {
@@ -818,11 +832,11 @@
     }).catch(() => {});
     // Premier lancement : le service worker prend la main sans qu'il y ait de mise à jour à charger.
     const hadController = !!navigator.serviceWorker.controller;
-    let reloading = false;
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
-      if (reloading || !hadController) return;
-      reloading = true;
-      location.reload();
+    navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadController) reload(); });
+    // Numéro de version affiché dans la liste, demandé au service worker actif.
+    navigator.serviceWorker.addEventListener('message', e => {
+      if (e.data && e.data.version) version = e.data.version;
     });
+    navigator.serviceWorker.ready.then(reg => { if (reg.active) reg.active.postMessage('version'); });
   }
 })(self.Klik = self.Klik || {});

@@ -28,11 +28,11 @@ L'interface est en français ou en anglais selon la langue du navigateur.
 | `js/engine.js`         | Planification audio (Web Audio) |
 | `js/app.js`            | Interface |
 | `sw.js`                | Service worker (hors-ligne, mises à jour) |
-| `version.js`           | **Numéro de version unique** |
+| `sw.js` → `VERSION`    | **Numéro de version unique** |
 
 ## Versions et mises à jour
 
-1. **Toute modification publiée doit incrémenter `version.js`.** Le nom du cache du service worker en dépend. Sans changement de version, les téléphones gardent l'ancienne app en cache.
+1. **Toute modification publiée doit incrémenter `VERSION` en haut de `sw.js`.** Le nom du cache en dépend, et c'est la modification de ce fichier qui signale une nouvelle version aux téléphones. Sans changement de version, ils gardent l'ancienne app en cache.
 2. Au lancement suivant, la nouvelle version s'installe en arrière-plan, puis un bandeau « Nouvelle version disponible · Mettre à jour » apparaît. L'app ne se recharge jamais d'elle-même en plein concert.
 3. Les données locales ont leur propre numéro de schéma (`SCHEMA` dans `js/store.js`). Si leur structure change, il faut incrémenter `SCHEMA` et ajouter une entrée dans `migrations`. Une version plus ancienne de l'app ne réécrit jamais des données plus récentes : elle les met de côté.
 4. Le format d'échange JSON a son propre numéro (`klik` dans le JSON, `FORMAT` dans `js/store.js`).
