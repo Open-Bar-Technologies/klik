@@ -80,7 +80,7 @@ Un concert est une liste ordonnée de morceaux, sans `klik` ni `type` sur chaque
   "type": "concert",
   "name": "Fête de la musique",
   "songs": [
-    { "name": "Rock droit", "tempo": 120, "signature": "4/4", "pattern": "XxXxXxXx" },
+    { "name": "Rock droit", "tempo": 120, "signature": "4/4", "pattern": "X.x.X.x.X.x.X.x." },
     { "name": "Valse", "tempo": 168, "signature": "3/4", "pattern": "X...X...X..." }
   ]
 }
