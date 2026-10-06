@@ -655,37 +655,40 @@
 
   const esc = x => String(x).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
-  // Page HTML autonome, écrite en gros pour la scène : un morceau par ligne, noir sur blanc.
+  // Page HTML autonome pour la scène : un morceau par ligne (titre à gauche, tonalité et BPM
+  // calés à droite), des lignes de séparation avant, entre et après, et la place pour des notes
+  // à la main. La taille s'adapte au nombre de lignes pour tenir sur une page A4 quand c'est possible.
   function setlistHtml(c) {
     const date = new Date().toLocaleDateString(K.i18n.lang, { day: '2-digit', month: '2-digit', year: 'numeric' });
     let prev;
-    const items = c.songs.map((s, i) => {
-      const head = s.section && s.section !== prev ? `<li class="sec">${esc(s.section)}</li>` : '';
+    let rows = 0;
+    const items = c.songs.map(s => {
+      let head = '';
+      if (s.section && s.section !== prev) { head = `<li class="sec">${esc(s.section)}</li>`; rows++; }
       prev = s.section;
-      const meta = [s.artist, s.duration].filter(Boolean).map(esc).join(' · ');
-      return head + `<li><span class="n">${i + 1}</span><span class="t">${esc(s.name)}${meta ? `<small>${meta}</small>` : ''}</span>`
-        + `<span class="k">${s.key ? esc(s.key) : ''}</span><span class="b">${s.tempo}<small>BPM</small></span></li>`;
+      rows++;
+      return head + `<li><span class="t">${esc(s.name)}</span><span class="k">${s.key ? esc(s.key) : ''}</span><span class="b">${s.tempo}</span></li>`;
     }).join('');
+    const row = Math.max(9, Math.min(15, 235 / Math.max(rows, 1)));   // hauteur d'une ligne, en mm
     return `<!doctype html>
 <html lang="${K.i18n.lang}"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${esc(c.name)}</title>
 <style>
-@page { margin: 14mm; }
+@page { size: A4; margin: 10mm 12mm; }
 * { box-sizing: border-box; }
-body { margin: 0; padding: 24px; font: 700 28px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; }
-h1 { margin: 0 0 18px; font-size: 48px; line-height: 1.1; text-transform: uppercase; letter-spacing: .02em; }
-ol { list-style: none; margin: 0; padding: 0; }
-li { display: grid; grid-template-columns: auto 1fr auto auto; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 2px solid #000; break-inside: avoid; }
-li.sec { display: block; padding: 18px 0 4px; border-bottom: 0; font-size: 22px; letter-spacing: .14em; text-transform: uppercase; }
-.n { min-width: 1.6em; text-align: right; font-size: 30px; }
-.t { min-width: 0; font-size: 40px; overflow-wrap: anywhere; }
-.t small, .b small { display: block; font-size: 18px; font-weight: 500; }
-.k { min-width: 3em; text-align: center; font-size: 40px; }
-.b { min-width: 3.4em; text-align: right; font-size: 40px; font-variant-numeric: tabular-nums; }
-footer { margin-top: 24px; font: 500 16px/1.2 system-ui, sans-serif; color: #444; }
-button { margin-top: 16px; padding: 12px 22px; font: 600 18px system-ui, sans-serif; }
-@media (max-width: 700px) { body { padding: 14px; } h1 { font-size: 32px; } .t, .k, .b { font-size: 26px; } .n { font-size: 20px; } li { gap: 10px; } .k, .b { min-width: 0; } }
+:root { --row: ${row.toFixed(1)}mm; }
+body { margin: 0; padding: 8mm 12mm; font: 600 calc(var(--row) * .56)/1 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; }
+h1 { margin: 0 0 4mm; font-size: 11mm; line-height: 1.1; text-transform: uppercase; letter-spacing: .02em; }
+ol { list-style: none; margin: 0; padding: 0; border-top: .5mm solid #000; }
+li { display: flex; align-items: center; gap: 5mm; height: var(--row); padding: 0 2mm; border-bottom: .5mm solid #000; break-inside: avoid; }
+li.sec { height: calc(var(--row) * .7); background: #000; color: #fff; font-size: calc(var(--row) * .4); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.t { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.k { width: 2.4em; text-align: right; }
+.b { width: 2.1em; text-align: right; font-variant-numeric: tabular-nums; }
+footer { margin-top: 4mm; font: 500 10pt/1.2 system-ui, sans-serif; color: #444; }
+button { margin-top: 4mm; padding: 10px 20px; font: 600 16px system-ui, sans-serif; }
+@media (max-width: 700px) { body { padding: 12px; } :root { --row: 11mm; } h1 { font-size: 24px; } }
 @media print { button { display: none; } body { padding: 0; } }
 </style></head><body>
 <h1>${esc(c.name)}</h1>
