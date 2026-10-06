@@ -655,46 +655,91 @@
 
   const esc = x => String(x).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
-  // Page HTML autonome pour la scène : un morceau par ligne (titre à gauche, tonalité et BPM
-  // calés à droite), des lignes de séparation avant, entre et après, et la place pour des notes
-  // à la main. La taille s'adapte au nombre de lignes pour tenir sur une page A4 quand c'est possible.
+  // Page HTML autonome pour la scène, à poser par terre : A4 paysage, titres les plus gros possible,
+  // un morceau par ligne (titre à gauche, tonalité et BPM calés à droite), sans traits (bandes
+  // grises alternées), une partie du concert par bloc. Les blocs se rangent en colonnes (deux côte
+  // à côte en paysage). Un petit script ajuste la taille du texte pour remplir exactement la page.
   function setlistHtml(c) {
     const date = new Date().toLocaleDateString(K.i18n.lang, { day: '2-digit', month: '2-digit', year: 'numeric' });
-    let prev;
-    let rows = 0;
-    const items = c.songs.map(s => {
-      let head = '';
-      if (s.section && s.section !== prev) { head = `<li class="sec">${esc(s.section)}</li>`; rows++; }
-      prev = s.section;
-      rows++;
-      return head + `<li><span class="t">${esc(s.name)}</span><span class="k">${s.key ? esc(s.key) : ''}</span><span class="b">${s.tempo}</span></li>`;
-    }).join('');
-    const row = Math.max(9, Math.min(15, 235 / Math.max(rows, 1)));   // hauteur d'une ligne, en mm
+    const blocks = [];
+    c.songs.forEach(s => {
+      const last = blocks[blocks.length - 1];
+      if (last && last.section === s.section) last.songs.push(s); else blocks.push({ section: s.section, songs: [s] });
+    });
+    const body = blocks.map(blk => `<section>${blk.section ? `<h2>${esc(blk.section)}</h2>` : ''}<ol>`
+      + blk.songs.map(s => `<li><span class="t">${esc(s.name)}</span><span class="k">${s.key ? esc(s.key) : ''}</span><span class="b">${s.tempo}</span></li>`).join('')
+      + '</ol></section>').join('');
     return `<!doctype html>
 <html lang="${K.i18n.lang}"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=1123">
 <title>${esc(c.name)}</title>
 <style>
-@page { size: A4; margin: 10mm 12mm; }
+@page { size: A4 landscape; margin: 0; }
 * { box-sizing: border-box; }
-:root { --row: ${row.toFixed(1)}mm; }
-body { margin: 0; padding: 8mm 12mm; font: 600 calc(var(--row) * .56)/1 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; }
-h1 { margin: 0 0 4mm; font-size: 11mm; line-height: 1.1; text-transform: uppercase; letter-spacing: .02em; }
-ol { list-style: none; margin: 0; padding: 0; border-top: .5mm solid #000; }
-li { display: flex; align-items: center; gap: 5mm; height: var(--row); padding: 0 2mm; border-bottom: .5mm solid #000; break-inside: avoid; }
-li.sec { height: calc(var(--row) * .7); background: #000; color: #fff; font-size: calc(var(--row) * .4); font-weight: 700; letter-spacing: .16em; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+html { background: #888; }
+body { margin: 0; font-family: system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; color: #000; }
+.page { width: 297mm; min-height: var(--h, 210mm); margin: 0 auto; padding: 8mm 10mm; background: #fff; }
+h1 { margin: 0 0 3mm; font-size: 9mm; line-height: 1; text-transform: uppercase; letter-spacing: .03em; }
+.cols { column-gap: 10mm; column-fill: balance; font-size: 24px; font-weight: 700; line-height: 1.12; }
+section { break-inside: avoid; margin-bottom: .5em; }
+h2 { margin: 0; padding: .1em .4em; background: #000; color: #fff; font-size: .55em; line-height: 1.5; letter-spacing: .16em; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+ol { list-style: none; margin: 0; padding: 0; }
+li { display: flex; align-items: baseline; gap: .4em; padding: .05em .4em; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+li:nth-child(even) { background: #e6e6e6; }
 .t { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.k { width: 2.4em; text-align: right; }
-.b { width: 2.1em; text-align: right; font-variant-numeric: tabular-nums; }
-footer { margin-top: 4mm; font: 500 10pt/1.2 system-ui, sans-serif; color: #444; }
-button { margin-top: 4mm; padding: 10px 20px; font: 600 16px system-ui, sans-serif; }
-@media (max-width: 700px) { body { padding: 12px; } :root { --row: 11mm; } h1 { font-size: 24px; } }
-@media print { button { display: none; } body { padding: 0; } }
+.k { width: 2.3em; text-align: right; }
+.b { width: 2em; text-align: right; font-variant-numeric: tabular-nums; }
+footer { margin-top: 2mm; font: 500 9pt/1.2 system-ui, sans-serif; color: #444; }
+button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 16px system-ui, sans-serif; }
+@media print { html { background: none; } .page { min-height: 0; } button { display: none; } }
 </style></head><body>
-<h1>${esc(c.name)}</h1>
-<ol>${items || `<li>${esc(t('setlistEmpty'))}</li>`}</ol>
-<footer>${esc(t('printedBy', { date }))}</footer>
+<div class="page"><h1>${esc(c.name)}</h1>
+<div class="cols">${body || `<p>${esc(t('setlistEmpty'))}</p>`}</div>
+<footer>${esc(t('printedBy', { date }))}</footer></div>
 <button type="button" onclick="print()">${esc(t('printButton'))}</button>
+<script>
+(function () {
+  var page = document.querySelector('.page'), cols = document.querySelector('.cols');
+  var pageRule = document.createElement('style');
+  document.head.appendChild(pageRule);
+  var mm = function (v) { var d = document.createElement('div'); d.style.cssText = 'position:absolute;visibility:hidden;width:' + v + 'mm'; document.body.appendChild(d); var w = d.offsetWidth; d.remove(); return w; };
+  // Trois mises en page possibles ; on garde celle qui permet le plus gros texte.
+  var configs = [
+    { w: 297, h: 210, n: 2, o: 'landscape' },
+    { w: 210, h: 297, n: 1, o: 'portrait' },
+    { w: 297, h: 210, n: 1, o: 'landscape' }
+  ];
+  function layout(c) {
+    page.style.width = c.w + 'mm';
+    page.style.setProperty('--h', c.h + 'mm');
+    cols.style.columnCount = c.n;
+    cols.style.columnWidth = ((c.w - 20 - 10 * (c.n - 1)) / c.n) + 'mm';
+    pageRule.textContent = '@page { size: A4 ' + c.o + '; margin: 0; }';
+  }
+  function best(c) {
+    layout(c);
+    var avail = mm(c.h - 16 - 12) - document.querySelector('h1').offsetHeight - document.querySelector('footer').offsetHeight;
+    function ok(px) {
+      cols.style.fontSize = px + 'px';
+      if (cols.offsetHeight > avail) return false;
+      var ts = cols.querySelectorAll('.t');
+      for (var i = 0; i < ts.length; i++) if (ts[i].scrollWidth > ts[i].clientWidth + 1) return false;
+      return true;
+    }
+    var lo = 14, hi = 140;
+    for (var n = 0; n < 14; n++) { var mid = (lo + hi) / 2; if (ok(mid)) lo = mid; else hi = mid; }
+    return lo;
+  }
+  function fit() {
+    var pick = configs[0], size = 0;
+    configs.forEach(function (c) { var f = best(c); if (f > size + 0.5) { size = f; pick = c; } });
+    layout(pick);
+    cols.style.fontSize = size + 'px';
+  }
+  fit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>
 </body></html>`;
   }
 

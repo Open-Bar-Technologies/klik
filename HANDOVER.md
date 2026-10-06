@@ -16,3 +16,7 @@
 - v0.15.0 : setlist optimisée : une ligne par morceau (titre à gauche, tonalité et BPM calés à droite),
   intertitres de sections en bandeau noir, lignes avant le premier et après le dernier morceau,
   taille adaptée au nombre de lignes pour tenir sur une page A4. Artiste et durée ne sont plus imprimés.
+- v0.15.1 : setlist pour la scène (lue au sol, de loin) : plus de traits (bandes grises alternées), padding minimal,
+  une partie par bloc, titres au maximum de taille. Un script dans la page teste trois mises en page
+  (A4 paysage 2 colonnes, portrait 1 colonne, paysage 1 colonne) et garde celle qui donne le plus gros texte ;
+  il règle aussi `@page size` en conséquence. Si ça déborde, vérifier la réserve de marge dans `fit()` (`js/app.js`).
