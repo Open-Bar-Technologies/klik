@@ -104,7 +104,7 @@
   function renderTempo() { ui.bpm.textContent = cur.tempo; }
 
   function renderMute() {
-    ui.mute.textContent = data.muted ? '🔇' : '🔊';
+    ui.mute.classList.toggle('is-muted', data.muted);
     ui.mute.setAttribute('aria-label', data.muted ? t('soundOn') : t('soundOff'));
   }
 

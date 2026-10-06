@@ -52,7 +52,13 @@
       <div class="ring" id="ring">
         <div class="points" id="points"></div>
         <div class="disc" id="disc">
-          <button class="mute" id="mute" type="button">🔊</button>
+          <button class="mute" id="mute" type="button">
+            <svg class="mute-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path class="spk" d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/>
+              <path class="wave" d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path class="cross" d="M15.5 9.5l5 5M20.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
           <button class="bpm" id="bpm" type="button" aria-label="Tempo. Toucher pour lancer ou arrêter, toucher deux fois pour saisir." data-i18n-aria="tempoButton">120</button>
           <input class="bpm-input" id="bpmInput" type="number" inputmode="numeric" min="30" max="300" aria-label="Saisir le tempo" data-i18n-aria="tempoInput" hidden>
           <button class="play" id="play" type="button" aria-label="Lancer"><span class="play-icon" aria-hidden="true"></span></button>

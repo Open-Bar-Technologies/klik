@@ -65,7 +65,7 @@ await ctx.addInitScript(() => {
       const out = drain();
       for (const ev of out) {
         if (!ev.lvl) continue;
-        const muted = document.querySelector('#mute').textContent === '🔇';
+        const muted = document.querySelector('#mute').classList.contains('is-muted');
         const wall = Date.now() - (ac.currentTime - ev.time) * 1000;
         window.__klikHit({ t: wall, lvl: ev.lvl, muted, origin: location.origin });
       }

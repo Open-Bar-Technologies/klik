@@ -185,7 +185,10 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
   display: grid;
   place-items: center;
 }
-.mute { top: 15%; transform: translateY(-50%); font-size: max(22px, calc(var(--ring) * .065)); line-height: 1; }
+.mute { top: 15%; transform: translateY(-50%); color: inherit; }
+.mute-icon { width: max(28px, calc(var(--ring) * .08)); height: max(28px, calc(var(--ring) * .08)); }
+.mute-icon .cross, .mute.is-muted .wave { display: none; }
+.mute.is-muted .cross { display: inline; }
 .play { bottom: 15%; transform: translateY(50%); }
 .bpm, .bpm-input {
   font-family: var(--font-display);
