@@ -121,7 +121,7 @@
     }
     if (raw.duration != null && raw.duration !== '') song.duration = normDuration(raw.duration);
     if (typeof raw.notes === 'string' && raw.notes.trim()) song.notes = raw.notes.trim().slice(0, 500);
-    for (const k of ['artist', 'section']) {
+    for (const k of ['artist', 'section', 'key']) {
       if (typeof raw[k] === 'string' && raw[k].trim()) song[k] = raw[k].trim().slice(0, 80);
     }
     // Champs inconnus (ex. « chant ») : conservés tels quels et réexportés, sans être affichés.
@@ -133,7 +133,7 @@
     return song;
   }
 
-  const KNOWN = new Set(['id', 'klik', 'type', 'name', 'tempo', 'signature', 'pattern', 'countIn', 'duration', 'notes', 'artist', 'section', 'extra']);
+  const KNOWN = new Set(['id', 'klik', 'type', 'name', 'tempo', 'signature', 'pattern', 'countIn', 'duration', 'notes', 'artist', 'section', 'key', 'extra']);
 
   // Durée « m:ss », « mm:ss » ou « h:mm:ss » → « m:ss » (minutes au-delà de 59 si besoin).
   function normDuration(raw) {
@@ -190,7 +190,7 @@
     out.tempo = song.tempo;
     out.signature = isPreset(song.signature) || sameAsText(song.signature) ? song.signature.label : { ...song.signature };
     out.pattern = song.pattern;
-    for (const k of ['countIn', 'duration', 'notes', 'artist', 'section']) if (song[k] != null) out[k] = song[k];
+    for (const k of ['countIn', 'duration', 'notes', 'artist', 'section', 'key']) if (song[k] != null) out[k] = song[k];
     if (song.extra) for (const [k, v] of Object.entries(song.extra)) if (!(k in out)) out[k] = v;
     return out;
   }

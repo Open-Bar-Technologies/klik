@@ -48,6 +48,7 @@ Les objets copiés par Klik commencent par deux champs :
 | `countIn`   | non         | Décompte, en mesures (0 à 8). Pas encore utilisé par l'interface. |
 | `duration`  | non         | Durée `"m:ss"` ou `"h:mm:ss"`, par exemple `"3:45"` ou `"00:03:45"`. Enregistrée en `"m:ss"`. |
 | `artist`    | non         | Artiste, affiché dans la liste. |
+| `key`       | non         | Tonalité (`"Am"`, `"F#"`, `"Sib"`…), affichée dans la liste et sur la setlist imprimée (80 caractères max). |
 | `section`   | non         | Partie du concert (`"Première partie"`, `"Rappels"`…), affichée en intertitre dans la liste. |
 | `notes`     | non         | Texte libre (500 caractères max). |
 | autres      | non         | Tout autre champ simple (texte, nombre, booléen), par exemple `"chant": "Pascal"`, est conservé et réexporté tel quel, sans être affiché. |

@@ -431,7 +431,7 @@
       },
       s.section && s.section !== (c.songs[i - 1] || {}).section ? h('span', { class: 'row-section' }, s.section) : null,
       h('span', { class: 'row-name' }, h('span', { class: 'row-num' }, i + 1), s.name),
-      h('span', { class: 'row-meta' }, [`${s.tempo} BPM`, s.signature.label, s.duration, s.artist].filter(Boolean).join(' · '))),
+      h('span', { class: 'row-meta' }, [`${s.tempo} BPM`, s.signature.label, s.key, s.duration, s.artist].filter(Boolean).join(' · '))),
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: s.name }), onclick: () => songActions(c, s) }, '⋯'),
     ));
     ui.libBody.replaceChildren(
@@ -559,6 +559,8 @@
         c.name = v.concertName.slice(0, 80);
         persist(); closeSheet(); renderLib();
       }) },
+      { label: t('printSetlist'), run: () => { closeSheet(); printSetlist(c); } },
+      { label: t('saveSetlist'), run: () => { closeSheet(); downloadSetlist(c); } },
       { label: t('share'), run: () => shareSheet(S.exportConcert(c), c.name) },
       { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportConcert(c)); } },
       data.previous && data.previous.concert.id === c.id ? { label: t('restorePrevious'), run: () => {
@@ -589,11 +591,12 @@
     form(t('saveSetting'), [
       { id: 'songName', label: t('songName'), placeholder: t('songPlaceholder') },
       { id: 'songTempo', label: t('tempoField'), type: 'number', inputmode: 'numeric', value: cur.tempo, min: S.MIN_TEMPO, max: S.MAX_TEMPO },
+      { id: 'songKey', label: t('keyField'), placeholder: t('keyPlaceholder') },
     ], t('save'), v => {
       if (!v.songName) return t('songNameMissing');
       const err = tempoError(v.songTempo);
       if (err) return err;
-      const s = S.normSong({ name: v.songName, tempo: Number(v.songTempo), signature: cur.signature, pattern: cur.pattern });
+      const s = S.normSong({ name: v.songName, tempo: Number(v.songTempo), signature: cur.signature, pattern: cur.pattern, key: v.songKey });
       c.songs.push(s);
       loadSong(c, s);
       closeSheet();
@@ -607,12 +610,14 @@
       { label: t('editSongAction'), run: () => form(t('editSong'), [
         { id: 'songName', label: t('songName'), value: s.name },
         { id: 'songTempo', label: t('tempoField'), type: 'number', inputmode: 'numeric', value: s.tempo, min: S.MIN_TEMPO, max: S.MAX_TEMPO },
+        { id: 'songKey', label: t('keyField'), value: s.key, placeholder: t('keyPlaceholder') },
       ], t('save'), v => {
         if (!v.songName) return t('nameEmpty');
         const err = tempoError(v.songTempo);
         if (err) return err;
         s.name = v.songName.slice(0, 80);
         s.tempo = S.clampTempo(Number(v.songTempo));
+        if (v.songKey) s.key = v.songKey.slice(0, 80); else delete s.key;
         if (cur.songId === s.id) loadSong(c, s);
         persist(); closeSheet(); renderLib();
       }) },
@@ -644,6 +649,68 @@
         toast(t('copyAdded', { concert: target.name }));
       },
     })));
+  }
+
+  /* ----- setlist imprimable ----- */
+
+  const esc = x => String(x).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+  // Page HTML autonome, écrite en gros pour la scène : un morceau par ligne, noir sur blanc.
+  function setlistHtml(c) {
+    const date = new Date().toLocaleDateString(K.i18n.lang, { day: '2-digit', month: '2-digit', year: 'numeric' });
+    let prev;
+    const items = c.songs.map((s, i) => {
+      const head = s.section && s.section !== prev ? `<li class="sec">${esc(s.section)}</li>` : '';
+      prev = s.section;
+      const meta = [s.artist, s.duration].filter(Boolean).map(esc).join(' · ');
+      return head + `<li><span class="n">${i + 1}</span><span class="t">${esc(s.name)}${meta ? `<small>${meta}</small>` : ''}</span>`
+        + `<span class="k">${s.key ? esc(s.key) : ''}</span><span class="b">${s.tempo}<small>BPM</small></span></li>`;
+    }).join('');
+    return `<!doctype html>
+<html lang="${K.i18n.lang}"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(c.name)}</title>
+<style>
+@page { margin: 14mm; }
+* { box-sizing: border-box; }
+body { margin: 0; padding: 24px; font: 700 28px/1.2 system-ui, -apple-system, 'Segoe UI', Arial, sans-serif; color: #000; background: #fff; }
+h1 { margin: 0 0 18px; font-size: 48px; line-height: 1.1; text-transform: uppercase; letter-spacing: .02em; }
+ol { list-style: none; margin: 0; padding: 0; }
+li { display: grid; grid-template-columns: auto 1fr auto auto; align-items: baseline; gap: 18px; padding: 10px 0; border-bottom: 2px solid #000; break-inside: avoid; }
+li.sec { display: block; padding: 18px 0 4px; border-bottom: 0; font-size: 22px; letter-spacing: .14em; text-transform: uppercase; }
+.n { min-width: 1.6em; text-align: right; font-size: 30px; }
+.t { min-width: 0; font-size: 40px; overflow-wrap: anywhere; }
+.t small, .b small { display: block; font-size: 18px; font-weight: 500; }
+.k { min-width: 3em; text-align: center; font-size: 40px; }
+.b { min-width: 3.4em; text-align: right; font-size: 40px; font-variant-numeric: tabular-nums; }
+footer { margin-top: 24px; font: 500 16px/1.2 system-ui, sans-serif; color: #444; }
+button { margin-top: 16px; padding: 12px 22px; font: 600 18px system-ui, sans-serif; }
+@media (max-width: 700px) { body { padding: 14px; } h1 { font-size: 32px; } .t, .k, .b { font-size: 26px; } .n { font-size: 20px; } li { gap: 10px; } .k, .b { min-width: 0; } }
+@media print { button { display: none; } body { padding: 0; } }
+</style></head><body>
+<h1>${esc(c.name)}</h1>
+<ol>${items || `<li>${esc(t('setlistEmpty'))}</li>`}</ol>
+<footer>${esc(t('printedBy', { date }))}</footer>
+<button type="button" onclick="print()">${esc(t('printButton'))}</button>
+</body></html>`;
+  }
+
+  function downloadSetlist(c) {
+    const url = URL.createObjectURL(new Blob([setlistHtml(c)], { type: 'text/html' }));
+    const file = `${t('setlistFile')}-${c.name.replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') || 'klik'}.html`;
+    const a = h('a', { href: url, download: file });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+
+  function printSetlist(c) {
+    const url = URL.createObjectURL(new Blob([setlistHtml(c)], { type: 'text/html' }));
+    const w = window.open(url, '_blank');
+    if (!w) { URL.revokeObjectURL(url); downloadSetlist(c); toast(t('setlistBlocked')); return; }
+    w.addEventListener('load', () => setTimeout(() => w.print(), 300));
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
   }
 
   /* ----- JSON : copier / coller ----- */
