@@ -1000,7 +1000,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
   }
 
   // Y a-t-il une version plus récente sur le serveur ? (route légère api/concerts/:id/version)
-  // Résultat gardé 60 s par concert pour ne pas interroger le serveur à chaque affichage.
+  // Résultat gardé 10 s par concert pour ne pas interroger le serveur à chaque affichage.
   const seenRemote = new Map();   // id → { at, latest }
   function newerOnServer(c) {
     const s = c.remote && seenRemote.get(c.id);
@@ -1009,7 +1009,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
   async function checkRemote(c, onNews) {
     if (!hasServer() || !c.remote) return;
     const s = seenRemote.get(c.id);
-    if (s && Date.now() - s.at < 60000) return;
+    if (s && Date.now() - s.at < 10000) return;
     seenRemote.set(c.id, { at: Date.now(), latest: s && s.latest });
     let latest = null;
     try { latest = (await api('GET', concertPath(c.id) + '/version')).body; } catch (e) { /* hors-ligne ou retiré du serveur */ }

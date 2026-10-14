@@ -1,5 +1,6 @@
 // Captures d'écran du guide (guide.html), en français et en anglais, sur la vraie app.
-// Usage : depuis la racine du dépôt, `python3 -m http.server 8765` puis `node video/guide-shots.mjs`.
+// Usage : depuis la racine du dépôt, `DATA_DIR=$(mktemp -d) PORT=8765 node server/server.js` (le serveur de Klik,
+// pour les setlists partagées) puis `node video/guide-shots.mjs`.
 // Produit guide/fr-NN.webp et guide/en-NN.webp (ffmpeg avec libwebp).
 import { mkdirSync, rmSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -23,8 +24,10 @@ const SEED = JSON.stringify({
   current: { tempo: 120, signature: '4/4', pattern: 'X...X...X...X...', concertId: null, songId: null, dirty: false },
 });
 const TEXT = {
-  fr: { concert: 'Anniversaire Sam', newConcert: 'Nouveau concert', paste: 'Coller', share: 'Partager', edit: 'Modifier le nom et le tempo' },
-  en: { concert: 'Sam’s birthday', newConcert: 'New gig', paste: 'Paste', share: 'Share', edit: 'Edit name and tempo' },
+  fr: { concert: 'Anniversaire Sam', newConcert: 'Nouveau concert', paste: 'Coller', share: 'Partager', edit: 'Modifier le nom, le tempo',
+        publish: 'Publier sur le serveur', shared: 'Setlists partagées', import: 'Importer', pseudo: 'Sam', drummer: 'Léo' },
+  en: { concert: 'Sam’s birthday', newConcert: 'New gig', paste: 'Paste', share: 'Share', edit: 'Edit name, tempo',
+        publish: 'Publish to the server', shared: 'Shared setlists', import: 'Import', pseudo: 'Sam', drummer: 'Leo' },
 };
 const RECEIVED = APP + '#k=z' + deflateRawSync(Buffer.from(JSON.stringify(
   { klik: 2, type: 'song', name: 'Osez Joséphine', tempo: 118, signature: '4/4', pattern: 'X.X..X..X..X..X.' },
@@ -57,8 +60,8 @@ async function phone(locale) {
 }
 
 let shot = 0;
-async function snap(page, lang) {
-  const n = String(++shot).padStart(2, '0');
+async function snap(page, lang, num) {
+  const n = String(num || ++shot).padStart(2, '0');
   const png = `${TMP}${lang}-${n}.png`;
   await page.screenshot({ path: png });
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', png, '-vf', 'scale=585:-1', '-c:v', 'libwebp', '-quality', '78', `${OUT}${lang}-${n}.webp`]);
@@ -95,8 +98,15 @@ async function typeTempo(page, v) {
   await page.keyboard.press('Enter');
 }
 
+// Setlists partagées : on part d'une liste vide pour chaque langue (rien n'est effacé, seulement masqué).
+async function clearShared() {
+  const { concerts } = await (await fetch(APP + 'api/concerts')).json();
+  for (const c of concerts) await fetch(`${APP}api/concerts/${c.id}/hide`, { method: 'POST' });
+}
+
 for (const lang of ['fr', 'en']) {
   shot = 0;
+  await clearShared();
   const T = TEXT[lang];
   const p = await phone(lang === 'fr' ? 'fr-FR' : 'en-US');
 
@@ -146,6 +156,12 @@ for (const lang of ['fr', 'en']) {
 
   // 3. Setlist
   await p.click('#openLibrary');                         // s'ouvre sur le concert d'exemple en cours
+  // Première ouverture avec le serveur : Klik demande un pseudo (capture 13, montrée dans la partie 5).
+  await p.waitForSelector('#pseudo');
+  await p.waitForTimeout(200);
+  await p.keyboard.type(T.pseudo);
+  await snap(p, lang, 13);                               // 13 : le pseudo
+  await p.click('.sheet .btn.primary');
   await p.click('#libBack');
   await p.waitForTimeout(300);
   await snap(p, lang);                                   // 06 : les concerts d'exemple, lien vers le guide
@@ -210,6 +226,47 @@ for (const lang of ['fr', 'en']) {
   await q.waitForSelector('.sheet .btn.primary');
   await q.waitForTimeout(300);
   await snap(q, lang);                                   // 12 : mise à jour proposée
+  await q.click('.sheet .btn.primary');                  // remplacer par la version reçue
+  await q.waitForTimeout(2800);
+
+  // 5. Setlists partagées (serveur du groupe)
+  shot = 13;
+  const publish = async () => {
+    await p.click('#libBack');
+    await p.locator('#libBody .row', { hasText: T.concert }).locator('.row-more').click();
+    await p.click(`.sheet .btn:has-text("${T.publish}")`);
+    await p.waitForTimeout(2800);                        // fin du message « publié »
+  };
+  await publish();
+  await q.click('#libClose');
+  await q.click('#openLibrary');
+  await q.waitForSelector('#pseudo');                    // le batteur choisit aussi son pseudo
+  await q.waitForTimeout(200);
+  await q.keyboard.type(T.drummer);
+  await q.click('.sheet .btn.primary');
+  await q.click('#libBack');
+  await q.click(`.save-current:has-text("${T.shared}")`);
+  await q.waitForSelector('#libBody .rows');
+  await q.waitForTimeout(300);
+  await snap(q, lang);                                   // 14 : les setlists partagées, « par Sam »
+  await q.click(`#libBody .row-main:has-text("${T.concert}")`);
+  await q.click(`.sheet .btn:has-text("${T.import}")`);  // même contenu : « déjà à jour », version retenue
+  await q.waitForTimeout(2800);
+
+  await p.locator('#libBody .row', { hasText: T.concert }).locator('.row-main').click();
+  await p.click('#songRows li:nth-child(1) .row-more');
+  await p.click(`.sheet .btn:has-text("${T.edit}")`);
+  await p.fill('#songTempo', '180');
+  await p.click('.sheet .btn.primary');
+  await p.waitForTimeout(400);
+  await publish();
+
+  await q.click('#libBack');
+  await q.waitForTimeout(10500);                         // plus tard : la vérification précédente a expiré
+  await q.click(`#libBody .row-main:has-text("${T.concert}")`);
+  await q.waitForSelector('.remote-new');
+  await q.waitForTimeout(300);
+  await snap(q, lang);                                   // 15 : nouvelle version sur le serveur
 
   await p.context().close();
   await q.context().close();

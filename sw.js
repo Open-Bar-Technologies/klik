@@ -4,7 +4,7 @@
 // l'active avec le bandeau « Mettre à jour ».
 //
 // SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
-const VERSION = '0.16.1';
+const VERSION = '0.16.2';
 
 const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';
@@ -37,6 +37,9 @@ const ASSETS = [
   'guide/fr-10.webp',
   'guide/fr-11.webp',
   'guide/fr-12.webp',
+  'guide/fr-13.webp',
+  'guide/fr-14.webp',
+  'guide/fr-15.webp',
   'guide/en-01.webp',
   'guide/en-02.webp',
   'guide/en-03.webp',
@@ -49,6 +52,9 @@ const ASSETS = [
   'guide/en-10.webp',
   'guide/en-11.webp',
   'guide/en-12.webp',
+  'guide/en-13.webp',
+  'guide/en-14.webp',
+  'guide/en-15.webp',
 ];
 
 // Chaque fichier est téléchargé avec ?v=VERSION : un cache intermédiaire (Cloudflare, proxy) qui

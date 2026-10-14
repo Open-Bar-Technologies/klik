@@ -22,5 +22,11 @@ Les textes à l'écran sont dans `record.mjs` (appels `caption`) et `stage.html`
 
 ## Captures du guide
 
-`guide-shots.mjs` refait les 24 captures de `guide.html` (`guide/fr-NN.webp`, `guide/en-NN.webp`) sur la vraie app,
-dans les deux langues. À relancer quand l'interface change (serveur local lancé comme ci-dessus).
+`guide-shots.mjs` refait les 30 captures de `guide.html` (`guide/fr-NN.webp`, `guide/en-NN.webp`) sur la vraie app,
+dans les deux langues, y compris les setlists partagées (13 à 15). À relancer quand l'interface change, avec le
+serveur de Klik (pas `http.server`, qui n'a pas l'API) :
+
+```sh
+DATA_DIR=$(mktemp -d) PORT=8765 node server/server.js   # à la racine du dépôt
+node video/guide-shots.mjs
+```
