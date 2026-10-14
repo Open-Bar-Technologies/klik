@@ -72,13 +72,14 @@ ce que l'app accepte. Pas de compte ni de mot de passe : tout le monde peut lire
 1. Nouvelle ressource → ce dépôt GitHub, branche `main`, build pack **Dockerfile**.
 2. **Ports Exposes** : `3000`. Domaine : `https://klik.lonoize.com`.
 3. **Persistent Storage** → ajouter un volume, chemin de destination **`/data`**. Sans ce volume, les
-   setlists sont perdues à chaque redéploiement.
+   setlists sont perdues à chaque redéploiement. Volume Docker ou dossier de l'hôte, peu importe : le
+   serveur démarre en root, donne `/data` à l'utilisateur `node` (uid 1000), puis abandonne les droits root.
 4. Déployer. Le healthcheck interroge `/api/health`.
 
 On peut aussi choisir le build pack **Docker Compose** : `docker-compose.yml` déclare déjà le volume.
 
 Variables d'environnement (facultatives) : `PORT` (3000), `DATA_DIR` (`/data`), `MAX_BODY` (taille max
-d'une setlist, 262144 octets).
+d'une setlist, 262144 octets), `RUN_AS` (utilisateur du serveur, `node`).
 
 Le serveur envoie `Cache-Control: no-cache` pour `sw.js` et les pages, `no-store` pour l'API : avec
 Cloudflare devant, il n'y a plus besoin de règle de cache ni de purge (voir plus haut).

@@ -208,6 +208,30 @@ async function createServer({ appDir, dataDir, maxBody = 256 * 1024 }) {
   });
 }
 
+// Lancé en root (image Docker) : le dossier monté sur DATA_DIR appartient souvent à root (montage
+// d'un dossier de l'hôte, volume créé avant l'image…). On donne ce dossier à l'utilisateur RUN_AS
+// (node par défaut), puis on abandonne les droits root : le serveur ne tourne jamais en root.
+function dropPrivileges(dataDir) {
+  if (typeof process.getuid !== 'function' || process.getuid() !== 0) return;
+  const name = process.env.RUN_AS || 'node';
+  if (name === 'root') return;
+  let passwd = '';
+  try { passwd = fs.readFileSync('/etc/passwd', 'utf8'); } catch { /* pas de /etc/passwd */ }
+  const line = passwd.split('\n').find(l => l.split(':')[0] === name);
+  if (!line) { console.warn(`Utilisateur « ${name} » introuvable : le serveur reste en root.`); return; }
+  const [, , uid, gid] = line.split(':').map(Number);
+  fs.mkdirSync(dataDir, { recursive: true });
+  const own = p => {
+    const st = fs.lstatSync(p);
+    if (st.uid !== uid || st.gid !== gid) fs.lchownSync(p, uid, gid);
+    if (st.isDirectory()) for (const n of fs.readdirSync(p)) own(path.join(p, n));
+  };
+  own(dataDir);
+  process.initgroups(name, gid);
+  process.setgid(gid);
+  process.setuid(uid);
+}
+
 module.exports = { createServer };
 
 if (require.main === module) {
@@ -215,6 +239,7 @@ if (require.main === module) {
   const appDir = path.resolve(process.env.APP_DIR || path.join(__dirname, '..'));
   const dataDir = path.resolve(process.env.DATA_DIR || '/data');
   const maxBody = Number(process.env.MAX_BODY) || undefined;
+  try { dropPrivileges(dataDir); } catch (e) { console.error('Préparation du dossier de données impossible :', e); process.exit(1); }
   createServer({ appDir, dataDir, maxBody }).then(server => {
     server.listen(port, () => console.log(`Klik sur le port ${port} · app ${appDir} · données ${dataDir}`));
     const stop = () => {

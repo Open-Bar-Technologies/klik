@@ -8,11 +8,11 @@ ENV NODE_ENV=production \
     APP_DIR=/app
 
 WORKDIR /app
-COPY --chown=node:node . .
-# Le volume est créé à partir de ce dossier : il appartient donc à l'utilisateur node.
+COPY . .
 RUN mkdir -p /data && chown node:node /data
 
-USER node
+# Pas de « USER node » : le serveur démarre en root, donne /data à l'utilisateur node (le volume
+# monté par Coolify appartient souvent à root), puis passe lui-même en node (voir dropPrivileges).
 EXPOSE 3000
 VOLUME ["/data"]
 
