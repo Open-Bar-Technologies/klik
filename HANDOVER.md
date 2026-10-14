@@ -14,6 +14,12 @@
 
 ## Fait récemment
 
+- v0.16.3 : son perdu sur Safari iOS (l'audio revenait en changeant d'onglet). `js/engine.js` crée un contexte audio
+  neuf à chaque ▶, surveille l'horloge audio pendant la lecture (état autre que « running » ou horloge figée
+  > 400 ms) et le relance : reprise automatique, sinon reconstruction au prochain toucher (`E.wake`, geste exigé
+  par iOS) ou reprise au retour sur la page. `navigator.audioSession.type = 'playback'` (Safari 17+) : le son passe
+  même avec le bouton silencieux. Testé en simulant les coupures dans Chromium, pas encore sur un vrai iPhone.
+
 - v0.16.2 : captures du guide refaites (icône du haut-parleur, champ Tonalité) et partie 5 « Le serveur du groupe »
   (captures 13 à 15 : pseudo, setlists partagées, bandeau nouvelle version). `video/guide-shots.mjs` tourne sur le
   serveur de Klik. Vérification des nouvelles versions : au plus une fois toutes les 10 s par concert (au lieu de 60).

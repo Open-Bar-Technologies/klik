@@ -1179,6 +1179,10 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
     else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') setTempo(cur.tempo - 1);
   });
 
+  // Son perdu pendant la lecture (iOS) : le prochain toucher, ou le retour sur la page, le relance.
+  document.addEventListener('pointerdown', () => { if (playing) E.wake(true); }, { capture: true, passive: true });
+  document.addEventListener('visibilitychange', () => { if (playing && document.visibilityState === 'visible') E.wake(false); });
+
   document.addEventListener('visibilitychange', async () => {
     if (playing && document.visibilityState === 'visible' && !wakeLock) {
       try { wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { /* facultatif */ }
