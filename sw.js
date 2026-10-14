@@ -4,7 +4,7 @@
 // l'active avec le bandeau « Mettre à jour ».
 //
 // SOURCE UNIQUE DE LA VERSION : à incrémenter à CHAQUE modification déployée.
-const VERSION = '0.15.1';
+const VERSION = '0.16.0';
 
 const CACHE = 'klik-' + VERSION;
 const FONT_CACHE = 'klik-fonts';
@@ -94,6 +94,8 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin !== self.location.origin) return;
+  // API des setlists partagées : toujours le réseau, jamais le cache.
+  if (url.pathname.startsWith(new URL('api/', self.registration.scope).pathname)) return;
 
   event.respondWith(
     caches.open(CACHE).then(cache =>

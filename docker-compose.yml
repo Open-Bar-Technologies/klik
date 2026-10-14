@@ -1,0 +1,13 @@
+# Essai en local : docker compose up --build, puis http://localhost:3000
+# (Coolify peut aussi déployer ce fichier tel quel : type « Docker Compose ».)
+services:
+  klik:
+    build: .
+    ports:
+      - "3000:3000"
+    volumes:
+      - klik-data:/data
+    restart: unless-stopped
+
+volumes:
+  klik-data:

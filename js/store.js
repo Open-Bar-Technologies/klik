@@ -162,6 +162,12 @@
     };
     if (validDate(raw.updatedAt)) c.updatedAt = new Date(raw.updatedAt).toISOString();
     if (keepId && typeof raw.fp === 'string') c.fp = raw.fp;
+    // Dernière version du serveur connue sur ce téléphone (publiée ou récupérée), et l'empreinte du
+    // contenu à ce moment-là. Stockage local seulement : jamais exporté.
+    if (keepId && raw.remote && typeof raw.remote.version === 'string') {
+      c.remote = { version: raw.remote.version };
+      if (typeof raw.remote.fp === 'string') c.remote.fp = raw.remote.fp;
+    }
     return c;
   }
 

@@ -384,7 +384,7 @@
   }
   function renderLib() {
     const c = libView.name === 'concert' && concertById(libView.concertId);
-    if (c) renderConcertView(c); else renderConcertsView();
+    if (c) renderConcertView(c); else if (libView.name === 'server') renderServerView(); else renderConcertsView();
   }
 
   function footButton(label, run, kind) {
@@ -411,6 +411,9 @@
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: c.name }), onclick: () => concertActions(c) }, '⋯'),
     ));
     ui.libBody.replaceChildren(
+      hasServer() ? h('button', { type: 'button', class: 'save-current shared', onclick: () => { libView = { name: 'server', concertId: null }; renderLib(); } },
+        h('strong', {}, t('sharedSetlists')),
+        h('span', {}, t('sharedHint'))) : null,
       rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('noConcerts')),
       guideLine(),
     );
@@ -562,6 +565,7 @@
       { label: t('printSetlist'), run: () => { closeSheet(); printSetlist(c); } },
       { label: t('saveSetlist'), run: () => { closeSheet(); downloadSetlist(c); } },
       { label: t('share'), run: () => shareSheet(S.exportConcert(c), c.name) },
+      hasServer() ? { label: t('publish'), run: () => publish(c) } : null,
       { label: t('copyJson'), run: () => { closeSheet(); copyJson(S.exportConcert(c)); } },
       data.previous && data.previous.concert.id === c.id ? { label: t('restorePrevious'), run: () => {
         closeSheet();
@@ -824,6 +828,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
 
   function updateSheet(local, incoming) {
     if (S.fingerprint(local) === incoming.fp) {
+      if (incoming.remote) { local.remote = incoming.remote; persist(); }
       toast(t('alreadyUpToDate', { name: local.name }));
       showConcert(local.id);
       return;
@@ -844,6 +849,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
       { label: t('keepBoth'), run: () => {
         closeSheet();
         incoming.id = S.uid();
+        delete incoming.remote;   // nouvelle copie : elle n'est pas (encore) sur le serveur
         data.concerts.push(incoming);
         persist();
         showConcert(incoming.id);
@@ -857,6 +863,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
     if (r.type === 'concert') {
       // L'empreinte est posée avant la sauvegarde : la date de modification reçue est conservée.
       r.concert.fp = S.fingerprint(r.concert);
+      if (r.concert.remote) r.concert.remote.fp = r.concert.fp;
       if (!r.concert.updatedAt) r.concert.updatedAt = new Date().toISOString();
       const existing = data.concerts.find(c => c.id === r.concert.id);
       if (existing) { updateSheet(existing, r.concert); return; }
@@ -917,6 +924,139 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
         closeSheet();
         try { applyImport(r); ui.lib.hidden = false; } catch (e) { toast(e.message); }
       } },
+      { label: t('cancel'), run: closeSheet },
+    ]);
+  }
+
+
+  /* ----- setlists partagées sur le serveur du groupe -----
+     Seulement si l'app est servie par server/server.js (pas sur un hébergement statique). Le serveur
+     garde toutes les versions publiées ; c.remote retient la version sur laquelle ce téléphone s'appuie. */
+
+  const SERVER_KEY = 'klik.server';
+  let serverSeen = (() => { try { return localStorage.getItem(SERVER_KEY) === '1'; } catch (e) { return false; } })();
+  const hasServer = () => serverSeen;
+  function setServerSeen(v) {
+    if (v === serverSeen) return;
+    serverSeen = v;
+    try { if (v) localStorage.setItem(SERVER_KEY, '1'); else localStorage.removeItem(SERVER_KEY); } catch (e) { /* facultatif */ }
+    if (!ui.lib.hidden && libView.name === 'concerts') renderLib();
+  }
+  // Au lancement : le serveur répond-il ? Sans réseau, on garde ce qu'on savait.
+  async function checkServer() {
+    try {
+      const res = await fetch('api/health', { cache: 'no-store' });
+      const body = res.ok && (res.headers.get('content-type') || '').includes('json') ? await res.json() : null;
+      setServerSeen(!!(body && body.ok));
+    } catch (e) { /* hors-ligne */ }
+  }
+
+  async function api(method, path, body) {
+    let res;
+    try {
+      res = await fetch('api/' + path, {
+        method, cache: 'no-store',
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) { throw new Error(t('serverUnreachable')); }
+    let json = null;
+    try { json = await res.json(); } catch (e) { /* réponse vide ou non JSON */ }
+    if (!res.ok && res.status !== 409) throw new Error((json && json.error) || t('serverError'));
+    return { status: res.status, body: json };
+  }
+  const concertPath = id => 'concerts/' + encodeURIComponent(id);
+
+  function remoteState(entry) {
+    const local = concertById(entry.id);
+    if (!local) return null;
+    if (!local.remote) return t('remoteLocal');
+    if (local.remote.version !== entry.version) return t('remoteNewer');
+    return local.remote.fp === S.fingerprint(local) ? t('remoteSame') : t('remoteLocalChanged');
+  }
+
+  async function renderServerView() {
+    ui.libBack.hidden = false;
+    ui.libTitle.textContent = t('sharedSetlists');
+    ui.libFoot.replaceChildren(
+      footButton(t('publishConcert'), () => menu(t('publishWhich'), data.concerts.map(c => ({ label: c.name, run: () => publish(c) }))), 'primary'),
+      footButton(t('refresh'), renderLib),
+    );
+    ui.libBody.replaceChildren(h('p', { class: 'empty' }, t('loading')));
+    let list;
+    try { list = (await api('GET', 'concerts')).body.concerts; setServerSeen(true); } catch (e) { list = e; }
+    if (ui.lib.hidden || libView.name !== 'server') return;   // l'utilisateur est passé à autre chose
+    if (list instanceof Error) { ui.libBody.replaceChildren(h('p', { class: 'empty' }, list.message)); return; }
+    const rows = list.map(entry => h('li', { class: 'row' },
+      h('button', { type: 'button', class: 'row-main', onclick: () => remoteActions(entry) },
+        h('span', { class: 'row-name' }, entry.name),
+        h('span', { class: 'row-meta' }, [t('songCount', entry.songs), t('publishedOn', { date: formatDate(entry.publishedAt) }), remoteState(entry)].filter(Boolean).join(' · '))),
+      h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: entry.name }), onclick: () => remoteActions(entry) }, '⋯'),
+    ));
+    ui.libBody.replaceChildren(rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('sharedEmpty')));
+  }
+
+  function remoteActions(entry) {
+    menu(entry.name, [
+      { label: t('import'), kind: 'primary', run: () => importRemote(entry.id) },
+      { label: t('previousVersions'), run: () => remoteVersions(entry) },
+      { label: t('hideFromList'), kind: 'danger', run: () => openSheet(t('hideTitle', { name: entry.name }), h('p', { class: 'sheet-text' }, t('hideWarning')), [
+        { label: t('hideFromList'), kind: 'danger', run: async () => {
+          closeSheet();
+          try { await api('POST', concertPath(entry.id) + '/hide'); } catch (e) { toast(e.message); return; }
+          toast(t('hideDone', { name: entry.name }));
+          renderLib();
+        } },
+        { label: t('cancel'), run: closeSheet },
+      ]) },
+    ]);
+  }
+
+  async function remoteVersions(entry) {
+    closeSheet();
+    let versions;
+    try { versions = (await api('GET', concertPath(entry.id) + '/versions')).body.versions; } catch (e) { toast(e.message); return; }
+    menu(t('versionsTitle', { name: entry.name }), versions.slice(0, 30).map(v => ({
+      label: `${formatDate(v.publishedAt)} · ${v.name} · ${t('songCount', v.songs)}`,
+      run: () => importRemote(entry.id, v.version),
+    })));
+  }
+
+  // Récupère une version du serveur et passe par l'import habituel (mise à jour proposée si le
+  // concert est déjà sur le téléphone).
+  async function importRemote(id, version) {
+    closeSheet();
+    let r;
+    try {
+      const { body } = await api('GET', concertPath(id) + (version ? '?version=' + encodeURIComponent(version) : ''));
+      r = S.parse(JSON.stringify(body.concert));
+      r.concert.remote = { version: body.version };
+    } catch (e) { toast(e.message); return; }
+    try { applyImport(r); } catch (e) { toast(e.message); }
+  }
+
+  async function publish(c, force) {
+    closeSheet();
+    persist();   // empreinte et date de modification à jour avant l'envoi
+    let r;
+    try {
+      r = await api('PUT', concertPath(c.id), { concert: S.exportConcert(c), base: c.remote ? c.remote.version : null, force: !!force });
+    } catch (e) { toast(e.message); return; }
+    if (r.status === 409) { publishConflict(c, r.body.latest); return; }
+    c.remote = { version: r.body.version, fp: S.fingerprint(c) };
+    persist();
+    toast(t(r.body.unchanged ? 'publishedUnchanged' : 'published', { name: c.name }));
+    if (!ui.lib.hidden && libView.name === 'server') renderLib();
+  }
+
+  // Quelqu'un a publié ce concert depuis la dernière version connue ici.
+  function publishConflict(c, latest) {
+    openSheet(t('conflictTitle', { name: c.name }), h('div', { class: 'sheet-text' },
+      h('p', {}, t('conflictText', { songs: t('songCount', latest.songs), date: formatDate(latest.publishedAt) })),
+      h('p', {}, t('conflictKeep')),
+    ), [
+      { label: t('publishMine'), kind: 'primary', run: () => publish(c, true) },
+      { label: t('importServer'), run: () => importRemote(c.id) },
       { label: t('cancel'), run: closeSheet },
     ]);
   }
@@ -1023,6 +1163,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
   renderAll();
   importFromLink();
   window.addEventListener('hashchange', importFromLink);
+  checkServer();
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   /* ---------- PWA : service worker et mises à jour ---------- */

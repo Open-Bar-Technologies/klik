@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+node_modules
+Dockerfile
+docker-compose.yml
+.dockerignore
+*.md
+server/*.test.js
+video/*
+!video/klik-presentation.mp4
+data
+.gitignore

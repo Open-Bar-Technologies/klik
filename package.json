@@ -1,0 +1,10 @@
+{
+  "name": "klik",
+  "private": true,
+  "description": "Klik : tempo de référence et setlists, avec serveur de setlists partagées",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test server/server.test.js"
+  }
+}
