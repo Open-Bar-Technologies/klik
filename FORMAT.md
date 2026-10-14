@@ -122,6 +122,7 @@ Klik ajoute deux champs facultatifs aux concerts qu'il exporte :
 | ----------- | ----------- |
 | `id`        | Identifiant unique du concert (8 à 64 caractères : lettres, chiffres, `-`, `_`). Il voyage avec le concert. |
 | `updatedAt` | Date de dernière modification (ISO 8601), mise à jour automatiquement. |
+| `updatedBy` | Pseudo de la personne qui a fait la dernière modification (40 caractères max). Klik le met à jour avec la date ; sans pseudo, il est retiré. |
 
 Coller un concert **sans `id` connu** crée un nouveau dossier. Coller un concert dont l'`id` existe
 déjà propose de **remplacer** la version locale (les deux dates sont affichées, avec un avertissement

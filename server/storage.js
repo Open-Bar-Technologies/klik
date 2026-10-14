@@ -1,6 +1,6 @@
 // Stockage des setlists partagées, dans des fichiers JSON (volume persistant /data) :
 //
-//   <DATA_DIR>/concerts/<id>/<version>.json   une version publiée : { version, publishedAt, fingerprint, concert }
+//   <DATA_DIR>/concerts/<id>/<version>.json   une version publiée : { version, publishedAt, publishedBy, fingerprint, concert }
 //   <DATA_DIR>/concerts/<id>/hidden           présent si le concert a été retiré de la liste
 //
 // Rien n'est jamais écrasé ni effacé : chaque publication ajoute une version. « Retirer de la liste »
@@ -25,8 +25,10 @@ function summary(rec) {
     name: rec.concert.name,
     songs: rec.concert.songs.length,
     updatedAt: rec.concert.updatedAt || null,
+    updatedBy: rec.concert.updatedBy || null,
     version: rec.version,
     publishedAt: rec.publishedAt,
+    publishedBy: rec.publishedBy || null,
   };
 }
 
@@ -89,6 +91,12 @@ async function openStorage(dataDir) {
         .sort((a, b) => b.publishedAt.localeCompare(a.publishedAt));
     },
 
+    // Résumé de la dernière version, sans lire le disque : sert à savoir s'il y a du nouveau.
+    latest(id) {
+      const e = ID.test(id) && index.get(id);
+      return e ? { ...e.latest, hidden: e.hidden } : null;
+    },
+
     // Dernière version (ou une version précise). null si inconnue.
     async get(id, version) {
       if (!ID.test(id) || !index.has(id)) return null;
@@ -108,7 +116,8 @@ async function openStorage(dataDir) {
 
     // Publie une nouvelle version. `base` = version sur laquelle l'auteur s'appuie (null s'il n'en
     // connaît aucune). Si le serveur a une autre version, Conflict, sauf avec force.
-    publish(concert, fingerprint, base, force) {
+    // `by` = pseudo de la personne qui publie (ou null).
+    publish(concert, fingerprint, base, force, by) {
       const id = concert.id;
       return locked(id, async () => {
         const entry = index.get(id);
@@ -126,6 +135,7 @@ async function openStorage(dataDir) {
         const rec = {
           version: `${now}-${crypto.randomBytes(3).toString('hex')}`,
           publishedAt: new Date(now).toISOString(),
+          publishedBy: by || null,
           fingerprint,
           concert,
         };

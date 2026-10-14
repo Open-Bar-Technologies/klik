@@ -82,6 +82,41 @@ test('publier, lister, relire, versions', async () => {
   } finally { await s.close(); }
 });
 
+test('auteur et route « version »', async () => {
+  const s = await start();
+  try {
+    assert.equal((await s.call('GET', '/api/concerts/abcdefgh-1234/version')).status, 404);
+    const p1 = (await s.call('PUT', '/api/concerts/abcdefgh-1234', { concert: concert({ updatedBy: '  Sam  ' }), by: 'Sam' })).body;
+    assert.equal(p1.updatedBy, 'Sam');
+    assert.equal(p1.publishedBy, 'Sam');
+
+    const v = await s.call('GET', '/api/concerts/abcdefgh-1234/version');
+    assert.equal(v.status, 200);
+    assert.equal(v.headers.get('cache-control'), 'no-store');
+    assert.equal(v.body.version, p1.version);
+    assert.equal(v.body.updatedBy, 'Sam');
+    assert.equal(v.body.hidden, false);
+    assert.equal(v.body.concert, undefined);   // résumé seulement, pas la setlist
+
+    const p2 = (await s.call('PUT', '/api/concerts/abcdefgh-1234', {
+      concert: concert({ name: 'Nouveau nom', updatedBy: 'Alex' }), base: p1.version, by: 'x'.repeat(100),
+    })).body;
+    assert.equal(p2.publishedBy.length, 40);
+    const v2 = (await s.call('GET', '/api/concerts/abcdefgh-1234/version')).body;
+    assert.equal(v2.version, p2.version);
+    assert.equal(v2.updatedBy, 'Alex');
+
+    const full = (await s.call('GET', '/api/concerts/abcdefgh-1234')).body;
+    assert.equal(full.concert.updatedBy, 'Alex');
+    assert.equal(full.publishedBy, 'x'.repeat(40));
+    const versions = (await s.call('GET', '/api/concerts/abcdefgh-1234/versions')).body.versions;
+    assert.deepEqual(versions.map(x => x.updatedBy), ['Alex', 'Sam']);
+
+    await s.call('POST', '/api/concerts/abcdefgh-1234/hide');
+    assert.equal((await s.call('GET', '/api/concerts/abcdefgh-1234/version')).body.hidden, true);
+  } finally { await s.close(); }
+});
+
 test('retirer de la liste, republier, redémarrer', async () => {
   const s = await start();
   let v;

@@ -45,11 +45,16 @@
     for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : String(c));
     return el;
   }
-  // Avant chaque sauvegarde : un concert dont le contenu a changé reçoit une nouvelle date de modification.
+  // Avant chaque sauvegarde : un concert dont le contenu a changé reçoit une nouvelle date de modification,
+  // et le pseudo de la personne qui l'a modifié (sans pseudo, on ne garde pas celui d'avant).
   function persist() {
     for (const c of data.concerts) {
       const fp = S.fingerprint(c);
-      if (c.fp !== fp) { c.fp = fp; c.updatedAt = new Date().toISOString(); }
+      if (c.fp !== fp) {
+        c.fp = fp;
+        c.updatedAt = new Date().toISOString();
+        if (data.pseudo) c.updatedBy = data.pseudo; else delete c.updatedBy;
+      }
     }
     S.save(data);
   }
@@ -377,6 +382,7 @@
     libView = c ? { name: 'concert', concertId: c.id } : { name: 'concerts', concertId: null };
     ui.lib.hidden = false;
     renderLib();
+    if (hasServer() && !data.pseudo && !pseudoAsked) { pseudoAsked = true; askPseudo(); }
   }
   function closeLibrary() {
     closeSheet();
@@ -411,9 +417,9 @@
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: c.name }), onclick: () => concertActions(c) }, '⋯'),
     ));
     ui.libBody.replaceChildren(
-      hasServer() ? h('button', { type: 'button', class: 'save-current shared', onclick: () => { libView = { name: 'server', concertId: null }; renderLib(); } },
+      ...(hasServer() ? [h('button', { type: 'button', class: 'save-current shared', onclick: () => { libView = { name: 'server', concertId: null }; renderLib(); } },
         h('strong', {}, t('sharedSetlists')),
-        h('span', {}, t('sharedHint'))) : null,
+        h('span', {}, t('sharedHint')))] : []),
       rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('noConcerts')),
       guideLine(),
     );
@@ -437,7 +443,11 @@
       h('span', { class: 'row-meta' }, [`${s.tempo} BPM`, s.signature.label, s.key, s.duration, s.artist].filter(Boolean).join(' · '))),
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: s.name }), onclick: () => songActions(c, s) }, '⋯'),
     ));
+    const fresh = newerOnServer(c);
     ui.libBody.replaceChildren(
+      ...(fresh ? [h('button', { type: 'button', class: 'save-current shared remote-new', onclick: () => importRemote(c.id) },
+        h('strong', {}, t('newVersionAvailable')),
+        h('span', {}, t('newVersionDetail', { date: formatDate(fresh.publishedAt), by: byWho(fresh) })))] : []),
       h('button', { type: 'button', class: 'save-current', onclick: () => saveCurrentForm(c) },
         h('strong', {}, t('saveCurrent')),
         h('span', {}, `${cur.tempo} BPM · ${cur.signature.label} · ${cur.pattern}`)),
@@ -448,6 +458,7 @@
       footButton(t('share'), () => shareSheet(S.exportConcert(c), c.name)),
       footButton(t('paste'), pasteFlow),
     );
+    checkRemote(c);
   }
 
   /* ----- glisser-déposer pour l'ordre du concert ----- */
@@ -835,8 +846,8 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
     }
     const older = local.updatedAt && incoming.updatedAt && incoming.updatedAt < local.updatedAt;
     openSheet(t('concertExists', { name: local.name }), h('div', { class: 'sheet-text' },
-      h('p', {}, t('versionYours', { songs: t('songCount', local.songs.length), date: formatDate(local.updatedAt) })),
-      h('p', {}, t('versionReceived', { songs: t('songCount', incoming.songs.length), date: formatDate(incoming.updatedAt) })),
+      h('p', {}, t('versionYours', { songs: t('songCount', local.songs.length), date: formatDate(local.updatedAt), by: byWho(local) })),
+      h('p', {}, t('versionReceived', { songs: t('songCount', incoming.songs.length), date: formatDate(incoming.updatedAt), by: byWho(incoming) })),
       older ? h('p', { class: 'warn' }, t('receivedOlder')) : null,
     ), [
       { label: t('updateConcert'), kind: older ? 'danger' : 'primary', run: () => {
@@ -967,6 +978,48 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
   }
   const concertPath = id => 'concerts/' + encodeURIComponent(id);
 
+  // « par Sam » : qui a fait la dernière modification (sinon qui a publié). Vide si inconnu.
+  const byWho = x => {
+    const who = x && (x.updatedBy || x.publishedBy);
+    return who ? t('byWho', { name: who }) : '';
+  };
+
+  // Pseudo : demandé une fois, pour dire au groupe qui a modifié ou publié une setlist.
+  let pseudoAsked = false;
+  function askPseudo(then) {
+    form(t('pseudoTitle'), [{ id: 'pseudo', label: t('pseudoLabel'), value: data.pseudo, placeholder: t('pseudoPlaceholder') }], t('save'), v => {
+      const pseudo = S.normPseudo(v.pseudo);
+      if (!pseudo) return t('pseudoMissing');
+      data.pseudo = pseudo;
+      persist();
+      closeSheet();
+      if (then) then(); else if (!ui.lib.hidden && libView.name === 'server') renderLib();
+    });
+    const f = ui.sheet.querySelector('form');
+    if (f) f.prepend(h('p', { class: 'sheet-text' }, t('pseudoHint')));
+  }
+
+  // Y a-t-il une version plus récente sur le serveur ? (route légère api/concerts/:id/version)
+  // Résultat gardé 60 s par concert pour ne pas interroger le serveur à chaque affichage.
+  const seenRemote = new Map();   // id → { at, latest }
+  function newerOnServer(c) {
+    const s = c.remote && seenRemote.get(c.id);
+    return s && s.latest && !s.latest.hidden && s.latest.version !== c.remote.version ? s.latest : null;
+  }
+  async function checkRemote(c, onNews) {
+    if (!hasServer() || !c.remote) return;
+    const s = seenRemote.get(c.id);
+    if (s && Date.now() - s.at < 60000) return;
+    seenRemote.set(c.id, { at: Date.now(), latest: s && s.latest });
+    let latest = null;
+    try { latest = (await api('GET', concertPath(c.id) + '/version')).body; } catch (e) { /* hors-ligne ou retiré du serveur */ }
+    seenRemote.set(c.id, { at: Date.now(), latest });
+    const news = newerOnServer(c);
+    if (!news) return;
+    if (onNews) onNews(news);
+    if (!ui.lib.hidden && libView.name === 'concert' && libView.concertId === c.id && !ui.libBody.querySelector('.remote-new')) renderLib();
+  }
+
   function remoteState(entry) {
     const local = concertById(entry.id);
     if (!local) return null;
@@ -990,10 +1043,14 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
     const rows = list.map(entry => h('li', { class: 'row' },
       h('button', { type: 'button', class: 'row-main', onclick: () => remoteActions(entry) },
         h('span', { class: 'row-name' }, entry.name),
-        h('span', { class: 'row-meta' }, [t('songCount', entry.songs), t('publishedOn', { date: formatDate(entry.publishedAt) }), remoteState(entry)].filter(Boolean).join(' · '))),
+        h('span', { class: 'row-meta' }, [t('songCount', entry.songs), t('publishedOn', { date: formatDate(entry.publishedAt), by: byWho(entry) }), remoteState(entry)].filter(Boolean).join(' · '))),
       h('button', { type: 'button', class: 'row-more', 'aria-label': t('actionsFor', { name: entry.name }), onclick: () => remoteActions(entry) }, '⋯'),
     ));
-    ui.libBody.replaceChildren(rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('sharedEmpty')));
+    ui.libBody.replaceChildren(
+      rows.length ? h('ul', { class: 'rows' }, rows) : h('p', { class: 'empty' }, t('sharedEmpty')),
+      h('p', { class: 'version' }, data.pseudo ? t('pseudoIs', { pseudo: data.pseudo }) : t('pseudoNone'), ' · ',
+        h('button', { type: 'button', class: 'link-button', onclick: () => askPseudo() }, t('pseudoChange'))),
+    );
   }
 
   function remoteActions(entry) {
@@ -1017,7 +1074,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
     let versions;
     try { versions = (await api('GET', concertPath(entry.id) + '/versions')).body.versions; } catch (e) { toast(e.message); return; }
     menu(t('versionsTitle', { name: entry.name }), versions.slice(0, 30).map(v => ({
-      label: `${formatDate(v.publishedAt)} · ${v.name} · ${t('songCount', v.songs)}`,
+      label: `${formatDate(v.publishedAt)}${byWho(v)} · ${v.name} · ${t('songCount', v.songs)}`,
       run: () => importRemote(entry.id, v.version),
     })));
   }
@@ -1031,17 +1088,22 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
       const { body } = await api('GET', concertPath(id) + (version ? '?version=' + encodeURIComponent(version) : ''));
       r = S.parse(JSON.stringify(body.concert));
       r.concert.remote = { version: body.version };
+      seenRemote.delete(id);
     } catch (e) { toast(e.message); return; }
     try { applyImport(r); } catch (e) { toast(e.message); }
   }
 
   async function publish(c, force) {
     closeSheet();
+    if (!data.pseudo) { askPseudo(() => publish(c, force)); return; }
     persist();   // empreinte et date de modification à jour avant l'envoi
+    // Modifiée ici avant d'avoir un pseudo : la personne qui publie en est l'autrice.
+    if (!c.updatedBy && (!c.remote || c.remote.fp !== c.fp)) { c.updatedBy = data.pseudo; S.save(data); }
     let r;
     try {
-      r = await api('PUT', concertPath(c.id), { concert: S.exportConcert(c), base: c.remote ? c.remote.version : null, force: !!force });
+      r = await api('PUT', concertPath(c.id), { concert: S.exportConcert(c), base: c.remote ? c.remote.version : null, force: !!force, by: data.pseudo });
     } catch (e) { toast(e.message); return; }
+    seenRemote.delete(c.id);
     if (r.status === 409) { publishConflict(c, r.body.latest); return; }
     c.remote = { version: r.body.version, fp: S.fingerprint(c) };
     persist();
@@ -1052,7 +1114,7 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
   // Quelqu'un a publié ce concert depuis la dernière version connue ici.
   function publishConflict(c, latest) {
     openSheet(t('conflictTitle', { name: c.name }), h('div', { class: 'sheet-text' },
-      h('p', {}, t('conflictText', { songs: t('songCount', latest.songs), date: formatDate(latest.publishedAt) })),
+      h('p', {}, t('conflictText', { songs: t('songCount', latest.songs), date: formatDate(latest.publishedAt), by: byWho(latest) })),
       h('p', {}, t('conflictKeep')),
     ), [
       { label: t('publishMine'), kind: 'primary', run: () => publish(c, true) },
@@ -1163,7 +1225,10 @@ button { position: fixed; top: 10px; right: 10px; padding: 10px 20px; font: 600 
   renderAll();
   importFromLink();
   window.addEventListener('hashchange', importFromLink);
-  checkServer();
+  checkServer().then(() => {
+    const c = currentConcert();
+    if (c) checkRemote(c, news => toast(t('newVersionToast', { name: c.name, by: byWho(news) })));
+  });
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 
   /* ---------- PWA : service worker et mises à jour ---------- */

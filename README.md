@@ -18,6 +18,7 @@ Guide illustré, imprimable, en français et en anglais : [guide.html](guide.htm
 - **Liste ☰** : concerts et morceaux. On peut enregistrer le réglage actuel, réordonner les morceaux en glissant ≡, et copier ou coller du JSON (voir [FORMAT.md](FORMAT.md)).
 - **Partager** un concert ou un morceau : Klik crée un lien qui contient toute la setlist (compressée dans l'ancre `#k=…`, rien n'est envoyé à un serveur). On l'envoie avec la feuille de partage du téléphone (WhatsApp, SMS, mail…). La personne qui le reçoit l'ouvre, ou le copie et touche « Coller » dans Klik. Sur iPhone, un lien s'ouvre dans Safari et pas dans l'app installée sur l'écran d'accueil, qui a ses propres données : il vaut mieux copier le lien et le coller dans l'app.
 - **Setlists partagées** (seulement quand Klik est servi par son serveur, voir plus bas) : « Publier sur le serveur » dans le menu ⋯ d'un concert, et « Setlists partagées » en haut de la liste des concerts pour récupérer ce que le groupe a publié. Chaque publication est gardée : « Versions précédentes » permet de récupérer une version antérieure. Si quelqu'un a publié entre-temps, Klik prévient avant de publier par-dessus. « Retirer de la liste » masque une setlist sans rien effacer.
+  Klik demande un **pseudo** (une fois, modifiable en bas des setlists partagées) : il est enregistré dans le concert (`updatedBy`) à chaque modification, et affiché (« publiée le … par Sam »). Quand un concert récupéré sur le serveur a une nouvelle version, un bandeau « Nouvelle version sur le serveur » apparaît en haut du concert (et un message au lancement si c'est le concert en cours).
 
 ## Fichiers
 
@@ -87,7 +88,7 @@ Cloudflare devant, il n'y a plus besoin de règle de cache ni de purge (voir plu
 Dans le volume, un dossier par concert, un fichier JSON par version publiée :
 
 ```
-/data/concerts/<id du concert>/<version>.json   { version, publishedAt, fingerprint, concert }
+/data/concerts/<id du concert>/<version>.json   { version, publishedAt, publishedBy, fingerprint, concert }
 /data/concerts/<id du concert>/hidden            présent si le concert a été retiré de la liste
 ```
 
@@ -101,10 +102,11 @@ Rien n'est jamais écrasé ni effacé par l'app. Republier un contenu identique 
 | Requête | Réponse |
 | ------- | ------- |
 | `GET /api/health` | `{ "ok": true }` |
-| `GET /api/concerts` | `{ concerts: [{ id, name, songs, updatedAt, version, publishedAt }] }`, la plus récente en premier |
-| `GET /api/concerts/:id` (`?version=…`) | `{ version, publishedAt, concert }` : la dernière version, ou celle demandée |
+| `GET /api/concerts` | `{ concerts: [résumé] }`, la plus récente en premier. Résumé : `{ id, name, songs, updatedAt, updatedBy, version, publishedAt, publishedBy }` |
+| `GET /api/concerts/:id/version` | résumé de la dernière version, plus `hidden`. Léger (rien n'est lu sur le disque) : sert à savoir s'il y a une nouvelle version, en comparant `version` |
+| `GET /api/concerts/:id` (`?version=…`) | `{ version, publishedAt, publishedBy, concert }` : la dernière version, ou celle demandée |
 | `GET /api/concerts/:id/versions` | `{ versions: [...] }`, la plus récente en premier |
-| `PUT /api/concerts/:id` | corps `{ concert, base, force }`. `base` = dernière version connue par l'auteur. Si le serveur en a une autre : `409` avec `latest`, sauf avec `force: true`. `201` : nouvelle version ; `200` + `unchanged` : contenu identique |
+| `PUT /api/concerts/:id` | corps `{ concert, base, force, by }` (`by` = pseudo de qui publie). `base` = dernière version connue par l'auteur. Si le serveur en a une autre : `409` avec `latest`, sauf avec `force: true`. `201` : nouvelle version ; `200` + `unchanged` : contenu identique |
 | `POST /api/concerts/:id/hide` | retire le concert de la liste |
 
 Le concert est au format d'échange (voir [FORMAT.md](FORMAT.md)) ; son `id` doit être celui de l'adresse.

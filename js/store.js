@@ -142,6 +142,9 @@
     return `${Number(m[1] || 0) * 60 + Number(m[2])}:${m[3]}`;
   }
 
+  // Pseudo de la personne qui a fait la dernière modification (40 caractères max).
+  const normPseudo = v => (typeof v === 'string' ? v.trim().replace(/\s+/g, ' ').slice(0, 40) : '');
+
   // L'identifiant d'un concert voyage avec lui : un concert reçu qui porte le même id qu'un
   // concert local est une nouvelle version de celui-ci (mise à jour proposée, pas de doublon).
   const validId = id => typeof id === 'string' && /^[A-Za-z0-9_-]{8,64}$/.test(id);
@@ -161,6 +164,8 @@
       }),
     };
     if (validDate(raw.updatedAt)) c.updatedAt = new Date(raw.updatedAt).toISOString();
+    const by = normPseudo(raw.updatedBy);
+    if (by) c.updatedBy = by;
     if (keepId && typeof raw.fp === 'string') c.fp = raw.fp;
     // Dernière version du serveur connue sur ce téléphone (publiée ou récupérée), et l'empreinte du
     // contenu à ce moment-là. Stockage local seulement : jamais exporté.
@@ -203,6 +208,7 @@
   const exportConcert = c => {
     const out = { klik: FORMAT, type: 'concert', id: c.id, name: c.name };
     if (c.updatedAt) out.updatedAt = c.updatedAt;
+    if (c.updatedBy) out.updatedBy = c.updatedBy;
     out.songs = c.songs.map(s => exportSong(s, false));
     return out;
   };
@@ -364,6 +370,8 @@
       current = { tempo: 120, signature: { ...p }, pattern: defaultPattern(p), concertId: null, songId: null, dirty: false };
     }
     const out = { schema: SCHEMA, muted: !!d.muted, current, concerts };
+    const pseudo = normPseudo(d.pseudo);
+    if (pseudo) out.pseudo = pseudo;
     if (d.previous && d.previous.concert) {
       try { out.previous = { concert: normConcert(d.previous.concert, true) }; } catch (e) { /* ignorée */ }
     }
@@ -445,7 +453,7 @@
 
   K.store = {
     PRESETS, MIN_TEMPO, MAX_TEMPO, FormatError,
-    uid, clampTempo, isPreset, defaultPattern, levels, setLevel,
+    uid, clampTempo, isPreset, normPseudo, defaultPattern, levels, setLevel,
     normSong, exportSong, exportConcert, stringify, parse, fingerprint, localizeBuiltins,
     load, save,
     encodeShare, decodeShare, shareToken,

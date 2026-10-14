@@ -3,9 +3,10 @@
 //
 //   GET  /api/health                     → { ok: true }
 //   GET  /api/concerts                   → setlists partagées (résumés, la plus récente en premier)
-//   GET  /api/concerts/:id[?version=v]   → { version, publishedAt, concert }
+//   GET  /api/concerts/:id[?version=v]   → { version, publishedAt, publishedBy, concert }
+//   GET  /api/concerts/:id/version       → résumé de la dernière version (y a-t-il du nouveau ?)
 //   GET  /api/concerts/:id/versions      → toutes les versions publiées (résumés)
-//   PUT  /api/concerts/:id               ← { concert, base, force } : publie une nouvelle version
+//   PUT  /api/concerts/:id               ← { concert, base, force, by } : publie une nouvelle version
 //   POST /api/concerts/:id/hide          → retire le concert de la liste (rien n'est effacé)
 //
 // Variables d'environnement : PORT (3000), DATA_DIR (/data), APP_DIR (dossier de l'app),
@@ -94,7 +95,7 @@ async function createServer({ appDir, dataDir, maxBody = 256 * 1024 }) {
     if (parts.length === 2 && method === 'GET') {
       const rec = await storage.get(id, url.searchParams.get('version'));
       if (!rec) throw new HttpError(404, 'Concert introuvable.');
-      return sendJson(res, 200, { version: rec.version, publishedAt: rec.publishedAt, concert: rec.concert });
+      return sendJson(res, 200, { version: rec.version, publishedAt: rec.publishedAt, publishedBy: rec.publishedBy || null, concert: rec.concert });
     }
     if (parts.length === 2 && method === 'PUT') {
       const body = await readBody(req, maxBody);
@@ -103,12 +104,18 @@ async function createServer({ appDir, dataDir, maxBody = 256 * 1024 }) {
       try { v = validate(body.concert); } catch (e) { throw new HttpError(400, e.message); }
       if (v.concert.id !== id) throw new HttpError(400, 'L’identifiant du concert ne correspond pas à l’adresse.');
       try {
-        const r = await storage.publish(v.concert, v.fingerprint, typeof body.base === 'string' ? body.base : null, body.force === true);
+        const by = typeof body.by === 'string' && body.by.trim() ? body.by.trim().slice(0, 40) : null;
+        const r = await storage.publish(v.concert, v.fingerprint, typeof body.base === 'string' ? body.base : null, body.force === true, by);
         return sendJson(res, r.unchanged ? 200 : 201, r);
       } catch (e) {
         if (e instanceof Conflict) return sendJson(res, 409, { error: 'Une autre version a été publiée entre-temps.', latest: e.latest });
         throw e;
       }
+    }
+    if (parts.length === 3 && parts[2] === 'version' && method === 'GET') {
+      const latest = storage.latest(id);
+      if (!latest) throw new HttpError(404, 'Concert introuvable.');
+      return sendJson(res, 200, latest);
     }
     if (parts.length === 3 && parts[2] === 'versions' && method === 'GET') {
       const list = await storage.versions(id);

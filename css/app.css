@@ -512,6 +512,9 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .save-current strong { font-size: 16px; }
 .save-current span { font-size: 13px; color: var(--text-secondary); word-break: break-all; }
 .save-current.shared span { word-break: normal; }
+.save-current.remote-new { border-style: solid; border-color: var(--accent); }
+.save-current.remote-new strong { color: var(--accent); }
+.link-button { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; font-size: 14px; letter-spacing: 0; text-decoration: underline; text-underline-offset: 3px; }
 .empty { color: var(--text-secondary); line-height: 1.5; max-width: 40ch; }
 .version { margin-top: 32px; font-size: 12px; color: var(--text-secondary); letter-spacing: .08em; }
 .guide-link { color: var(--accent); text-underline-offset: 3px; }

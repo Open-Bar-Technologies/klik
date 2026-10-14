@@ -20,6 +20,10 @@
   (menu ⋯ du concert), liste « Setlists partagées » (en haut des concerts, seulement si `api/health` répond),
   versions conservées, conflit signalé si quelqu'un a publié entre-temps (`c.remote` = version de base, stocké
   localement, jamais exporté), « Retirer de la liste » sans effacement. Le service worker ne touche pas à `api/`.
+- v0.16.1 : pseudo (`data.pseudo`, demandé à la 1re ouverture de la liste quand le serveur répond, et avant de
+  publier) ; champ `updatedBy` des concerts (format d'échange), mis à jour par `persist()` avec `updatedAt`.
+  Route `GET /api/concerts/:id/version` ; bandeau « Nouvelle version sur le serveur » dans un concert récupéré
+  (vérifié au plus une fois par minute) et message au lancement pour le concert en cours. `publishedBy` côté serveur.
 
 - v0.14.0 : champ `key` (tonalité) sur les morceaux ; setlist imprimable / téléchargeable en HTML (menu ⋯ du concert).
 - v0.14.1 : haut-parleur en SVG (`.mute-icon`, classe `is-muted`).
